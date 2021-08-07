@@ -1,17 +1,17 @@
 use std::{fs::File, io::{self, Read}};
 
-enum DataType {
+pub enum DataType {
     Bytes(Vec<u8>),
     File(File)
 }
 
-struct ChunkedIter {
+pub struct ChunkedIter {
     data: DataType,
     chunk_size: usize
 }
 
 impl DataType {
-    fn into_iter(self, chunk_size: usize) -> ChunkedIter {
+    pub fn into_iter(self, chunk_size: usize) -> ChunkedIter {
         ChunkedIter {
             data: self,
             chunk_size,
