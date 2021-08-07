@@ -1,5 +1,6 @@
 #[path = "algorithms/md5.rs"]
 mod md5;
+mod chunked_stream;
 
 fn main() {
     println!("Hello, world!");
