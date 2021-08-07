@@ -1,9 +1,11 @@
 use std::io;
 use super::super::chunked_stream;
 
+type MdBuffer = (u32, u32, u32, u32);
+
 const CHUNK_SIZE: usize = 64;
 const S_TABLE_REDUCED: [u8; 16] = [7, 12, 17, 22, 5, 9, 14, 20, 4, 11, 16, 23, 6, 10, 15, 21];
-const K_TABLE: [u32; 64] = [
+const K_TABLE: [u32; CHUNK_SIZE] = [
 0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
 0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
 0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be,
@@ -24,14 +26,7 @@ const K_TABLE: [u32; 64] = [
 
 pub fn digest(data: chunked_stream::DataType) -> io::Result<Vec<u8>> {
     // Initial MD buffer
-    let mut md_buf: (u32, u32, u32, u32) = (0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476);
-
-    // Append message according to the MD spec
-    // - append bits "1000...000" until bit length is 448 mod 512
-    // - then append length as a 64 bit int (little endian)
-    /* bytes.push(128);
-    while bytes.len() % 64 != 56 { bytes.push(0); }
-    for len_byte in appended_len_bytes { bytes.push(len_byte) } */
+    let mut md_buf: MdBuffer = (0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476);
 
     // Process each chunk via last_chunk and increments length
     let mut last_chunk: Option<Vec<u8>> = None;
@@ -40,7 +35,7 @@ pub fn digest(data: chunked_stream::DataType) -> io::Result<Vec<u8>> {
         md_buf = process_chunk(last_chunk, md_buf);
 
         let cur_chunk_bytes = cur_chunk?;
-        len += (cur_chunk_bytes.len() * 8) as u64;
+        len = len.wrapping_add((cur_chunk_bytes.len() * 8) as u64);
         last_chunk = Some(cur_chunk_bytes);
     }
 
@@ -51,40 +46,34 @@ pub fn digest(data: chunked_stream::DataType) -> io::Result<Vec<u8>> {
     };
     let len_bytes = len.to_le_bytes();
     
-    // Then process the final chunk (including padding)
-    // Case 1: final chunk length < 448 => pad up to 448, then pad length
-    // Case 2: final chunk length > 448 => pad to 448 mod 512, pad length,
-    //         then split into two chunks
-    if final_chunk.len() < 56 {
-        final_chunk.push(128);
-        while final_chunk.len() % 64 != 56 { final_chunk.push(0); }
-        for len_byte in len_bytes { final_chunk.push(len_byte) }
+    // Pad final chunk according to MD-spec as usual
+    final_chunk.push(128);
+    while final_chunk.len() % CHUNK_SIZE != 56 { final_chunk.push(0); }
+    for len_byte in len_bytes { final_chunk.push(len_byte) }
 
-        md_buf = process_chunk(Some(final_chunk), md_buf);
+    // If final chunk is double the chunk size, split into two 
+    // then process individually, otherwise process final chunk
+    if final_chunk.len() == 2 * CHUNK_SIZE {
+        let (left, right) = final_chunk.split_at(CHUNK_SIZE);
+
+        md_buf = process_chunk(Some(left.into()), md_buf);
+        md_buf = process_chunk(Some(right.into()), md_buf);
     } else {
-        let mut add_final_chunk: Vec<u8> = vec![];
-
-        if final_chunk.len() == 64 {
-            add_final_chunk.push(128);
-        } else {
-            final_chunk.push(128);
-            while final_chunk.len() != 64 { final_chunk.push(0); }
-        }
-
-        while add_final_chunk.len() % 64 != 56 { add_final_chunk.push(0) }
-        for len_byte in len_bytes { add_final_chunk.push(len_byte) }
-
         md_buf = process_chunk(Some(final_chunk), md_buf);
-        md_buf = process_chunk(Some(add_final_chunk), md_buf);
     }
 
     let (a, b, c, d) = md_buf;
     println!("{:08x} {:08x} {:08x} {:08x}", a.to_be(), b.to_be(), c.to_be(), d.to_be());
 
-    Ok(vec![])
+    let mut out: Vec<u8> = a.to_le_bytes().to_vec();
+    for b_byte in b.to_le_bytes() { out.push(b_byte) }
+    for c_byte in c.to_le_bytes() { out.push(c_byte) }
+    for d_byte in d.to_le_bytes() { out.push(d_byte) }
+
+    Ok(out)
 }
 
-fn process_chunk(chunk: Option<Vec<u8>>, md_buffer: (u32, u32, u32, u32)) -> (u32, u32, u32, u32) {
+fn process_chunk(chunk: Option<Vec<u8>>, md_buffer: MdBuffer) -> MdBuffer {
     if chunk.is_none() { return md_buffer }
 
     let chunk = chunk.unwrap();
@@ -113,8 +102,6 @@ fn process_chunk(chunk: Option<Vec<u8>>, md_buffer: (u32, u32, u32, u32)) -> (u3
 
             let f = f.wrapping_add(a).wrapping_add(k(i)).wrapping_add(words[g]);
 
-            println!("{} {} {} {}", d, b.wrapping_add(leftrotate(f, s(i))), b, c);
-
             (d, b.wrapping_add(leftrotate(f, s(i))), b, c)
         });
 
@@ -136,6 +123,7 @@ fn k(i: usize) -> u32 { K_TABLE[i] }
 
 fn leftrotate(n: u32, amount: u8) -> u32 { (n << amount) | (n >> (32 - amount)) }
 
+#[cfg(test)]
 mod test {
     use super::*;
 
