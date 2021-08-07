@@ -1,3 +1,7 @@
+use std::io;
+use super::super::chunked_stream;
+
+const CHUNK_SIZE: usize = 64;
 const S_TABLE_REDUCED: [u8; 16] = [7, 12, 17, 22, 5, 9, 14, 20, 4, 11, 16, 23, 6, 10, 15, 21];
 const K_TABLE: [u32; 64] = [
 0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
@@ -18,36 +22,87 @@ const K_TABLE: [u32; 64] = [
 0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
 ];
 
-pub fn digest(message: String) {
-    let mut bytes: Vec<u8> = message.as_bytes().into();
-    let appended_len_bytes = ((bytes.len() * 8) as u64).to_le_bytes();
-
-    println!("{:?}", appended_len_bytes);
-
+pub fn digest(data: chunked_stream::DataType) -> io::Result<Vec<u8>> {
     // Initial MD buffer
     let mut md_buf: (u32, u32, u32, u32) = (0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476);
 
     // Append message according to the MD spec
     // - append bits "1000...000" until bit length is 448 mod 512
     // - then append length as a 64 bit int (little endian)
-    bytes.push(128);
+    /* bytes.push(128);
     while bytes.len() % 64 != 56 { bytes.push(0); }
-    for len_byte in appended_len_bytes { bytes.push(len_byte) }
+    for len_byte in appended_len_bytes { bytes.push(len_byte) } */
 
-    // Process each 512-bit chunk
-    for chunk_i in (0..bytes.len()).step_by(64) {
-        let mut words: Vec<u32> = vec![];
-        for i in 0..16 {
-            let byte_pos = chunk_i + i*4;
-            words.push(u32::from_le_bytes(
-                [bytes[byte_pos], 
-                bytes[byte_pos+1], 
-                bytes[byte_pos+2], 
-                bytes[byte_pos+3]]))
+    // Process each chunk via last_chunk and increments length
+    let mut last_chunk: Option<Vec<u8>> = None;
+    let mut len: u64 = 0;
+    for cur_chunk in data.into_iter(CHUNK_SIZE) {
+        md_buf = process_chunk(last_chunk, md_buf);
+
+        let cur_chunk_bytes = cur_chunk?;
+        len += (cur_chunk_bytes.len() * 8) as u64;
+        last_chunk = Some(cur_chunk_bytes);
+    }
+
+    // If last chunk is None (empty message), define final chunk as an empty Vec
+    let mut final_chunk: Vec<u8> = match last_chunk {
+        None => vec![],
+        Some(chunk) => chunk
+    };
+    let len_bytes = len.to_le_bytes();
+    
+    // Then process the final chunk (including padding)
+    // Case 1: final chunk length < 448 => pad up to 448, then pad length
+    // Case 2: final chunk length > 448 => pad to 448 mod 512, pad length,
+    //         then split into two chunks
+    if final_chunk.len() < 56 {
+        final_chunk.push(128);
+        while final_chunk.len() % 64 != 56 { final_chunk.push(0); }
+        for len_byte in len_bytes { final_chunk.push(len_byte) }
+
+        md_buf = process_chunk(Some(final_chunk), md_buf);
+    } else {
+        let mut add_final_chunk: Vec<u8> = vec![];
+
+        if final_chunk.len() == 64 {
+            add_final_chunk.push(128);
+        } else {
+            final_chunk.push(128);
+            while final_chunk.len() != 64 { final_chunk.push(0); }
         }
 
-        let (a_n, b_n, c_n, d_n) = 
-        (0..64).fold(md_buf,
+        while add_final_chunk.len() % 64 != 56 { add_final_chunk.push(0) }
+        for len_byte in len_bytes { add_final_chunk.push(len_byte) }
+
+        md_buf = process_chunk(Some(final_chunk), md_buf);
+        md_buf = process_chunk(Some(add_final_chunk), md_buf);
+    }
+
+    let (a, b, c, d) = md_buf;
+    println!("{:08x} {:08x} {:08x} {:08x}", a.to_be(), b.to_be(), c.to_be(), d.to_be());
+
+    Ok(vec![])
+}
+
+fn process_chunk(chunk: Option<Vec<u8>>, md_buffer: (u32, u32, u32, u32)) -> (u32, u32, u32, u32) {
+    if chunk.is_none() { return md_buffer }
+
+    let chunk = chunk.unwrap();
+
+    // Split chunk into 32-bit words (little-endian)
+    let mut words: Vec<u32> = vec![];
+    for i in 0..16 {
+        words.push(u32::from_le_bytes([
+            chunk[i*4],
+            chunk[i*4 + 1],
+            chunk[i*4 + 2],
+            chunk[i*4 + 3],
+        ]))
+    }
+
+    // Main loop of MD5
+    let (a_n, b_n, c_n, d_n) = 
+        (0..64).fold(md_buffer,
         |(a, b, c, d), i: usize| {
             let (f, g) = match i {
                 0..=15  => ((b & c) | (!b & d)  , i             ),
@@ -63,17 +118,13 @@ pub fn digest(message: String) {
             (d, b.wrapping_add(leftrotate(f, s(i))), b, c)
         });
 
-        let (a, b, c, d) = md_buf;
-        md_buf = (
-            a.wrapping_add(a_n), 
-            b.wrapping_add(b_n), 
-            c.wrapping_add(c_n), 
-            d.wrapping_add(d_n)
-        );
-    }
-
-    let (a, b, c, d) = md_buf;
-    println!("{:08x} {:08x} {:08x} {:08x}", a.to_be(), b.to_be(), c.to_be(), d.to_be());
+    let (a, b, c, d) = md_buffer;
+    (
+        a.wrapping_add(a_n), 
+        b.wrapping_add(b_n), 
+        c.wrapping_add(c_n), 
+        d.wrapping_add(d_n)
+    )
 }
 
 // Returns value in the s-table at index i

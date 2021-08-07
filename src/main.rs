@@ -1,8 +1,10 @@
-#[path = "algorithms/md5.rs"]
-mod md5;
+mod algorithms;
 mod chunked_stream;
 
 fn main() {
     println!("Hello, world!");
-    md5::digest("The quick brown fox jumps over the lazy dog".to_string());
+
+    let string = "The quick brown fox jumps over the lazy dog".to_string();
+    let data = chunked_stream::DataType::Bytes(string.as_bytes().into());
+    let result = algorithms::md5::digest(data);
 }
