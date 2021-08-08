@@ -1,4 +1,4 @@
-use std::io;
+use super::helpers::{leftrotate, exact_32_bit_words};
 use super::super::chunked_stream;
 
 type MdBuffer = (u32, u32, u32, u32);
@@ -24,7 +24,11 @@ const K_TABLE: [u32; CHUNK_SIZE] = [
 0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
 ];
 
-pub fn digest(data: chunked_stream::DataType) -> io::Result<Vec<u8>> {
+/// Generates an MD5 digest from the given DataType object.
+///
+/// Returns an io::Result containing the digest as bytes 
+/// in the form of a Vec\<u8>.
+pub fn digest(data: chunked_stream::DataType) -> std::io::Result<Vec<u8>> {
     // Initial MD buffer
     let mut md_buf: MdBuffer = (0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476);
 
@@ -73,21 +77,13 @@ pub fn digest(data: chunked_stream::DataType) -> io::Result<Vec<u8>> {
     Ok(out)
 }
 
+/// Processes a chunk and returns the MD buffer for the next iteration.
 fn process_chunk(chunk: Option<Vec<u8>>, md_buffer: MdBuffer) -> MdBuffer {
     if chunk.is_none() { return md_buffer }
 
     let chunk = chunk.unwrap();
 
-    // Split chunk into 32-bit words (little-endian)
-    let mut words: Vec<u32> = vec![];
-    for i in 0..16 {
-        words.push(u32::from_le_bytes([
-            chunk[i*4],
-            chunk[i*4 + 1],
-            chunk[i*4 + 2],
-            chunk[i*4 + 3],
-        ]))
-    }
+    let words = exact_32_bit_words(&chunk);
 
     // Main loop of MD5
     let (a_n, b_n, c_n, d_n) = 
@@ -114,14 +110,13 @@ fn process_chunk(chunk: Option<Vec<u8>>, md_buffer: MdBuffer) -> MdBuffer {
     )
 }
 
-// Returns value in the s-table at index i
+/// Returns the value in the s-table at index i
 fn s(i: usize) -> u8 {
     S_TABLE_REDUCED[4 * (i / 16) + i % 4]
 }
 
+/// Returns the value inthe k-table at index i
 fn k(i: usize) -> u32 { K_TABLE[i] }
-
-fn leftrotate(n: u32, amount: u8) -> u32 { (n << amount) | (n >> (32 - amount)) }
 
 #[cfg(test)]
 mod test {
@@ -133,11 +128,5 @@ mod test {
         assert_eq!((s(24), s(25), s(26), s(27)), (5, 9, 14, 20));
         assert_eq!((s(40), s(41), s(42), s(43)), (4, 11, 16, 23));
         assert_eq!((s(60), s(61), s(62), s(63)), (6, 10, 15, 21));
-    }
-
-    #[test]
-    fn leftrotate_works() {
-        assert_eq!(leftrotate(5, 2), 20);
-        assert_eq!(leftrotate(3489705808, 4), 718093);
     }
 }
