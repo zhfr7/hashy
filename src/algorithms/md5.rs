@@ -1,5 +1,5 @@
 use super::helpers::{leftrotate, exact_32_bit_words};
-use crate::chunked_stream;
+use crate::data_container;
 
 type MdBuffer = (u32, u32, u32, u32);
 
@@ -28,7 +28,7 @@ const K_TABLE: [u32; CHUNK_SIZE] = [
 ///
 /// Returns an io::Result containing the digest as bytes 
 /// in the form of a Vec\<u8>.
-pub fn digest(data: chunked_stream::DataType) -> std::io::Result<Vec<u8>> {
+pub fn digest(data: data_container::DataType) -> std::io::Result<Vec<u8>> {
     // Initial MD buffer
     let mut md_buf: MdBuffer = (0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476);
 
@@ -120,7 +120,7 @@ fn k(i: usize) -> u32 { K_TABLE[i] }
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{chunked_stream::DataType, post_process::*};
+    use crate::{data_container::DataType, post_process::*};
 
     #[test]
     fn correct_digests() {
