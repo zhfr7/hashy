@@ -1,5 +1,5 @@
 use super::helpers::{leftrotate, exact_32_bit_words};
-use super::super::chunked_stream;
+use crate::chunked_stream;
 
 type MdBuffer = (u32, u32, u32, u32);
 
@@ -67,7 +67,6 @@ pub fn digest(data: chunked_stream::DataType) -> std::io::Result<Vec<u8>> {
     }
 
     let (a, b, c, d) = md_buf;
-    println!("{:08x} {:08x} {:08x} {:08x}", a.to_be(), b.to_be(), c.to_be(), d.to_be());
 
     let mut out: Vec<u8> = a.to_le_bytes().to_vec();
     for b_byte in b.to_le_bytes() { out.push(b_byte) }
@@ -121,6 +120,26 @@ fn k(i: usize) -> u32 { K_TABLE[i] }
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::{chunked_stream::DataType, post_process::*};
+
+    #[test]
+    fn correct_digests() {
+        let input_expected_pairs = [
+            ("", 
+                "d41d8cd98f00b204e9800998ecf8427e"),
+            ("The quick brown fox jumps over the lazy dog", 
+                "9e107d9d372bb6826bd81d3542a419d6"),
+            ("This is a very long string with the purpose of exceeding the chunk length of 64 bytes",
+                "ba70257a277a031df015d5741af768f3")
+        ];
+
+        for (input, expected) in input_expected_pairs {
+            let data = DataType::Bytes(input.as_bytes().to_vec());
+            let digest_bytes = digest(data).unwrap();
+
+            assert_eq!(encode(digest_bytes, Encoding::Hex(false)), expected);
+        }
+    }
 
     #[test]
     fn correct_s_values() {
