@@ -5,7 +5,31 @@ pub enum Encoding {
 }
 
 pub fn encode(bytes: Vec<u8>, encoding: Encoding) -> String {
-    String::new()
+    match encoding {
+        Encoding::Hex(false)    => hex::encode(bytes),
+        Encoding::Hex(true)     => hex::encode_upper(bytes),
+        Encoding::Base64        => base64::encode(bytes),
+        Encoding::Binary        => encode_binary(bytes)
+    }
+}
+
+fn encode_binary(bytes: Vec<u8>) -> String {
+    bytes.into_iter()
+    .map(|byte| {
+        let mut cur_value = byte;
+        let mut cur_bitstring = String::new();
+
+        for _ in 0..8 {
+            cur_bitstring.insert(0, 
+                if cur_value % 2 == 0 { '0' } else { '1' });
+
+            cur_value /= 2;
+        }
+
+        cur_bitstring
+    })
+    .collect::<Vec<String>>()
+    .join("")
 }
 
 #[cfg(test)]
