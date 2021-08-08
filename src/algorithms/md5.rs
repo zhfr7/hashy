@@ -1,4 +1,4 @@
-use super::helpers::{leftrotate, exact_32_bit_words};
+use super::helpers::*;
 use crate::data_container;
 
 type MdBuffer = (u32, u32, u32, u32);
@@ -43,27 +43,12 @@ pub fn digest(data: data_container::DataType) -> std::io::Result<Vec<u8>> {
         last_chunk = Some(cur_chunk_bytes);
     }
 
-    // If last chunk is None (empty message), define final chunk as an empty Vec
-    let mut final_chunk: Vec<u8> = match last_chunk {
-        None => vec![],
-        Some(chunk) => chunk
-    };
-    let len_bytes = len.to_le_bytes();
-    
-    // Pad final chunk according to MD-spec as usual
-    final_chunk.push(128);
-    while final_chunk.len() % CHUNK_SIZE != 56 { final_chunk.push(0); }
-    for len_byte in len_bytes { final_chunk.push(len_byte) }
+    // Default last chunk to an empty Vec
+    let last_chunk = last_chunk.unwrap_or_default();
 
-    // If final chunk is double the chunk size, split into two 
-    // then process individually, otherwise process final chunk
-    if final_chunk.len() == 2 * CHUNK_SIZE {
-        let (left, right) = final_chunk.split_at(CHUNK_SIZE);
-
-        md_buf = process_chunk(Some(left.into()), md_buf);
-        md_buf = process_chunk(Some(right.into()), md_buf);
-    } else {
-        md_buf = process_chunk(Some(final_chunk), md_buf);
+    // Process remaining chunk(s) after padding the last chunk
+    for chunk in md_pad_last(&last_chunk, len) {
+        md_buf = process_chunk(Some(chunk), md_buf);
     }
 
     let (a, b, c, d) = md_buf;
@@ -114,7 +99,7 @@ fn s(i: usize) -> u8 {
     S_TABLE_REDUCED[4 * (i / 16) + i % 4]
 }
 
-/// Returns the value inthe k-table at index i
+/// Returns the value in the k-table at index i
 fn k(i: usize) -> u32 { K_TABLE[i] }
 
 #[cfg(test)]
