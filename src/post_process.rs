@@ -1,9 +1,14 @@
+/// Encoding types
 pub enum Encoding {
+    /// Hexadecimal encoding with Hex(is_uppercase)
     Hex(bool),
+    /// Base64 encoding using the standard character set with '=' padding
     Base64,
+    /// Binary encoding
     Binary
 }
 
+/// Encodes the given bytes according to the encoding type given
 pub fn encode(bytes: Vec<u8>, encoding: Encoding) -> String {
     match encoding {
         Encoding::Hex(false)    => hex::encode(bytes),
