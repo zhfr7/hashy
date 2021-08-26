@@ -5,7 +5,7 @@ mod cli;
 
 use cli::Opts;
 use data_container::DataType;
-use std::{fs::File, io};
+use std::{fs::File, io::{self, BufReader}};
 use structopt::StructOpt;
 
 use algorithms::md5;
@@ -16,7 +16,7 @@ fn main() -> io::Result<()> {
     
     let data = if opts.file {
         let file = File::open(opts.input)?;
-        DataType::File(file)
+        DataType::File(BufReader::new(file))
     } else {
         DataType::Bytes(opts.input.as_bytes().to_owned())
     };
