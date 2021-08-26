@@ -1,16 +1,15 @@
 mod algorithms;
 mod data_container;
 mod post_process;
+mod cli;
 
 use std::io;
-use post_process::*;
+use cli::Opts;
+use structopt::StructOpt;
 
 fn main() -> io::Result<()> {
-    let string = "The quick brown fox jumps over the lazy dog".to_string();
-    let data = data_container::DataType::Bytes(string.as_bytes().into());
-    let result = algorithms::md5::digest(data)?;
-
-    println!("{}", encode(result, Encoding::Hex(true)));
+    let opt = Opts::from_args();
+    println!("{:?}", opt);
 
     Ok(())
 }

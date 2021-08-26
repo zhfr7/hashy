@@ -1,4 +1,5 @@
 /// Encoding types
+#[derive(Debug)]
 pub enum Encoding {
     /// Hexadecimal encoding with Hex(is_uppercase)
     Hex(bool),
