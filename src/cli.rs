@@ -5,21 +5,21 @@ use structopt::StructOpt;
 pub struct Opts {
     /// Does the input denote a filepath?
     #[structopt(short, long)]
-    file: bool,
+    pub file: bool,
 
     /// Input string
     #[structopt()]
-    input: String,
+    pub input: String,
 
     /// Chosen algorithm name, must be present
     #[structopt(short, long)]
-    algorithm: String,
+    pub algorithm: String,
 
     /// Encoding type for output hash
     #[structopt(short, long, 
         parse(try_from_str = parse_encoding), 
         default_value = "hex")]
-    encoding: Encoding
+    pub encoding: Encoding
 }
 
 fn parse_encoding(encoding: &str) -> Result<Encoding, String> {
