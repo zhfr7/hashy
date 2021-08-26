@@ -36,7 +36,7 @@ pub fn digest(data: data_container::DataType) -> std::io::Result<Vec<u8>> {
     let mut last_chunk: Option<Vec<u8>> = None;
     let mut len: u64 = 0;
     for cur_chunk in data.into_iter(CHUNK_SIZE) {
-        md_buf = process_chunk(last_chunk, md_buf);
+        process_chunk(last_chunk, &mut md_buf);
 
         let cur_chunk_bytes = cur_chunk?;
         len = len.wrapping_add((cur_chunk_bytes.len() * 8) as u64);
@@ -48,7 +48,7 @@ pub fn digest(data: data_container::DataType) -> std::io::Result<Vec<u8>> {
 
     // Process remaining chunk(s) after padding the last chunk
     for chunk in md_pad_last(&last_chunk, len) {
-        md_buf = process_chunk(Some(chunk), md_buf);
+        process_chunk(Some(chunk), &mut md_buf);
     }
 
     let (a, b, c, d) = md_buf;
@@ -61,19 +61,19 @@ pub fn digest(data: data_container::DataType) -> std::io::Result<Vec<u8>> {
     Ok(out)
 }
 
-/// Processes a chunk and returns the MD buffer for the next iteration.
-fn process_chunk(chunk: Option<Vec<u8>>, md_buffer: MdBuffer) -> MdBuffer {
-    if chunk.is_none() { return md_buffer }
+/// Processes a chunk and mutates the MD buffer accordingly.
+fn process_chunk(chunk: Option<Vec<u8>>, (a0, b0, c0, d0): &mut MdBuffer) {
+    if chunk.is_none() { return }
 
     let chunk = chunk.unwrap();
-
     let words = exact_32_bit_words(&chunk);
 
     // Main loop of MD5
     let (a_n, b_n, c_n, d_n) = 
-        (0..64).fold(md_buffer,
+        (0..64).fold((*a0, *b0, *c0, *d0),
         |(a, b, c, d), i: usize| {
-            let (f, g) = match i {
+            let (f, g) = 
+            match i {
                 0..=15  => ((b & c) | (!b & d)  , i             ),
                 16..=31 => ((d & b) | (!d & c)  , (5*i + 1) % 16),
                 32..=47 => (b ^ c ^ d           , (3*i + 5) % 16),
@@ -85,13 +85,10 @@ fn process_chunk(chunk: Option<Vec<u8>>, md_buffer: MdBuffer) -> MdBuffer {
             (d, b.wrapping_add(leftrotate(f, s(i))), b, c)
         });
 
-    let (a, b, c, d) = md_buffer;
-    (
-        a.wrapping_add(a_n), 
-        b.wrapping_add(b_n), 
-        c.wrapping_add(c_n), 
-        d.wrapping_add(d_n)
-    )
+    *a0 = a0.wrapping_add(a_n);
+    *b0 = b0.wrapping_add(b_n);
+    *c0 = c0.wrapping_add(c_n);
+    *d0 = d0.wrapping_add(d_n);
 }
 
 /// Returns the value in the s-table at index i
