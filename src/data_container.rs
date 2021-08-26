@@ -39,7 +39,7 @@ impl Iterator for ChunkedIter {
             {
                 let mut chunk = Vec::with_capacity(self.chunk_size);
 
-                match reader.read_to_end(&mut chunk) {
+                match reader.take(self.chunk_size as u64).read_to_end(&mut chunk) {
                     Ok(0) => None,
                     Ok(_) => Some(Ok(chunk)),
                     Err(err) => Some(Err(err))
