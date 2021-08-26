@@ -1,8 +1,8 @@
-use std::{fs::File, io::{self, Read}};
+use std::{fs::File, io::{self, BufReader, Read}};
 
 pub enum DataType {
     Bytes(Vec<u8>),
-    File(File)
+    File(BufReader<File>)
 }
 
 pub struct ChunkedIter {
@@ -35,11 +35,11 @@ impl Iterator for ChunkedIter {
                 }
             },
 
-            DataType::File(file) => 
+            DataType::File(reader) => 
             {
                 let mut chunk = Vec::with_capacity(self.chunk_size);
 
-                match file.by_ref().take(self.chunk_size as u64).read_to_end(&mut chunk) {
+                match reader.read_to_end(&mut chunk) {
                     Ok(0) => None,
                     Ok(_) => Some(Ok(chunk)),
                     Err(err) => Some(Err(err))
@@ -49,8 +49,11 @@ impl Iterator for ChunkedIter {
     }
 }
 
+
 #[cfg(test)]
 mod test {
+    use std::io::BufReader;
+
     use super::DataType;
 
     #[test]
@@ -81,7 +84,7 @@ mod test {
         write!(tmpfile, "Example message in file").unwrap();
         tmpfile.seek(SeekFrom::Start(0)).unwrap();
 
-        let data = DataType::File(tmpfile);
+        let data = DataType::File(BufReader::new(tmpfile));
         let expected = vec![
             vec![69, 120, 97, 109, 112],
             vec![108, 101, 32, 109, 101],
