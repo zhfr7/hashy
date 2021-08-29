@@ -4,6 +4,7 @@ use crate::data_container;
 type MdBuffer = (u32, u32, u32, u32);
 
 const CHUNK_SIZE: usize = 64;
+const INIT_MD_BUFFER: MdBuffer = (0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476);
 const S_TABLE_REDUCED: [u8; 16] = [7, 12, 17, 22, 5, 9, 14, 20, 4, 11, 16, 23, 6, 10, 15, 21];
 const K_TABLE: [u32; CHUNK_SIZE] = [
 0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
@@ -30,7 +31,7 @@ const K_TABLE: [u32; CHUNK_SIZE] = [
 /// in the form of a Vec\<u8>.
 pub fn digest(data: data_container::DataType) -> std::io::Result<Vec<u8>> {
     // Initial MD buffer
-    let mut md_buf: MdBuffer = (0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476);
+    let mut md_buf: MdBuffer = INIT_MD_BUFFER;
 
     // Process each chunk via last_chunk and increments length
     let mut last_chunk: Option<Vec<u8>> = None;
