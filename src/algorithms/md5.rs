@@ -36,12 +36,12 @@ pub fn digest(data: data_container::DataType) -> std::io::Result<Vec<u8>> {
     // Process each chunk via last_chunk and increments length
     let mut last_chunk: Option<Vec<u8>> = None;
     let mut len: u64 = 0;
-    for cur_chunk in data.into_iter(CHUNK_SIZE) {
+    for chunk in data.into_iter(CHUNK_SIZE) {
         process_chunk(last_chunk, &mut md_buf);
 
-        let cur_chunk_bytes = cur_chunk?;
-        len = len.wrapping_add((cur_chunk_bytes.len() * 8) as u64);
-        last_chunk = Some(cur_chunk_bytes);
+        let chunk_bytes = chunk?;
+        len = len.wrapping_add((chunk_bytes.len() * 8) as u64);
+        last_chunk = Some(chunk_bytes);
     }
 
     // Default last chunk to an empty Vec
@@ -53,13 +53,10 @@ pub fn digest(data: data_container::DataType) -> std::io::Result<Vec<u8>> {
     }
 
     let (a, b, c, d) = md_buf;
-
-    let mut out: Vec<u8> = a.to_le_bytes().to_vec();
-    for b_byte in b.to_le_bytes() { out.push(b_byte) }
-    for c_byte in c.to_le_bytes() { out.push(c_byte) }
-    for d_byte in d.to_le_bytes() { out.push(d_byte) }
-
-    Ok(out)
+    Ok([a.to_le_bytes(), 
+        b.to_le_bytes(), 
+        c.to_le_bytes(), 
+        d.to_le_bytes()].concat())
 }
 
 /// Processes a chunk and mutates the MD buffer accordingly.
@@ -93,9 +90,7 @@ fn process_chunk(chunk: Option<Vec<u8>>, (a0, b0, c0, d0): &mut MdBuffer) {
 }
 
 /// Returns the value in the s-table at index i
-fn s(i: usize) -> u8 {
-    S_TABLE_REDUCED[4 * (i / 16) + i % 4]
-}
+fn s(i: usize) -> u8 { S_TABLE_REDUCED[4*(i/16) + i%4] }
 
 /// Returns the value in the k-table at index i
 fn k(i: usize) -> u32 { K_TABLE[i] }

@@ -13,16 +13,12 @@ const S_TABLE_REDUCED: [u8; 12] = [
 pub fn digest(data: DataType) -> std::io::Result<Vec<u8>> {
     let mut md_buf = INIT_MD_BUFFER;
 
-    fn f(x: u32, y: u32, z: u32) -> u32 { x&y | !x&z }
-    fn g(x: u32, y: u32, z: u32) -> u32 { x&y | x&z | y&z }
-    fn h(x: u32, y: u32, z: u32) -> u32 { x ^ y ^ z }
-
     let mut last_chunk = None;
     let mut len: u64 = 0;
     for chunk in data.into_iter(CHUNK_SIZE) {
 
         let chunk_bytes = chunk?;
-        len = len.wrapping_add(chunk_bytes.len() as u64);
+        len = len.wrapping_add((chunk_bytes.len() * 8) as u64);
         last_chunk = Some(chunk_bytes);
     }
 
@@ -30,7 +26,9 @@ pub fn digest(data: DataType) -> std::io::Result<Vec<u8>> {
 }
 
 fn process_chunk(chunk: Option<Vec<u8>>, md_buffer: &mut MdBuffer) {
-
+    fn f(x: u32, y: u32, z: u32) -> u32 { x&y | !x&z }
+    fn g(x: u32, y: u32, z: u32) -> u32 { x&y | x&z | y&z }
+    fn h(x: u32, y: u32, z: u32) -> u32 { x ^ y ^ z }
 }
 
 fn k(i: usize) -> usize {
@@ -39,9 +37,8 @@ fn k(i: usize) -> usize {
         0..=15  => i,
         16..=31 => (4*i_norm + i_norm / 4) % 16,
         _       => {
-            let a = [0, 2, 1, 3][i_norm/4];
-            let b = [0, 2, 1, 3][i_norm%4];
-            a + b*4
+            let seq = [0, 2, 1, 3];
+            seq[i_norm/4] + seq[i_norm%4]*4
         },
     }
 }
