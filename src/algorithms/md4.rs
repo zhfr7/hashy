@@ -1,8 +1,9 @@
 use crate::data_container::DataType;
+use crate::algorithms::helpers::*;
 
 type MdBuffer = (u32, u32, u32, u32);
 
-const CHUNK_SIZE: usize = 16;
+const CHUNK_SIZE: usize = 64;
 const INIT_MD_BUFFER: MdBuffer = (0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476);
 const S_TABLE_REDUCED: [u8; 12] = [
     3, 7, 11, 19,
@@ -13,22 +14,59 @@ const S_TABLE_REDUCED: [u8; 12] = [
 pub fn digest(data: DataType) -> std::io::Result<Vec<u8>> {
     let mut md_buf = INIT_MD_BUFFER;
 
+    // Process each chunk via last_chunk
     let mut last_chunk = None;
     let mut len: u64 = 0;
     for chunk in data.into_iter(CHUNK_SIZE) {
+        process_chunk(last_chunk, &mut md_buf);
 
         let chunk_bytes = chunk?;
         len = len.wrapping_add((chunk_bytes.len() * 8) as u64);
         last_chunk = Some(chunk_bytes);
     }
 
-    unimplemented!()
+    // Default last chunk to an empty Vec
+    let last_chunk = last_chunk.unwrap_or_default();
+
+    // Process last padded chunk(s)
+    for chunk in md_pad_last(&last_chunk, len) {
+        process_chunk(Some(chunk), &mut md_buf);
+    }
+
+    let (a, b, c, d) = md_buf;
+    Ok([a.to_le_bytes(), 
+        b.to_le_bytes(), 
+        c.to_le_bytes(), 
+        d.to_le_bytes()].concat())
 }
 
-fn process_chunk(chunk: Option<Vec<u8>>, md_buffer: &mut MdBuffer) {
-    fn f(x: u32, y: u32, z: u32) -> u32 { x&y | !x&z }
-    fn g(x: u32, y: u32, z: u32) -> u32 { x&y | x&z | y&z }
-    fn h(x: u32, y: u32, z: u32) -> u32 { x ^ y ^ z }
+fn process_chunk(chunk: Option<Vec<u8>>, (a0, b0, c0, d0): &mut MdBuffer) {
+    if chunk.is_none() { return }
+
+    let chunk = chunk.unwrap();
+    let words = exact_32_bit_words(&chunk);
+
+    // Main loop of MD4
+    let (a_n, b_n, c_n, d_n) = 
+        (0..48).fold((*a0, *b0, *c0, *d0), 
+        |(a, b, c, d), i| {
+            let aux_plus_const = match i {
+                0..=15  => b&c | !b&d,
+                16..=31 => (b&c | b&d | c&d).wrapping_add(0x5a827999),
+                _       => (b ^ c ^ d)      .wrapping_add(0x6ed9eba1)
+            };
+
+            let a = leftrotate(
+                a.wrapping_add(aux_plus_const)
+                .wrapping_add(words[k(i)]), s(i));
+
+            (d, a, b, c)
+        });
+
+    *a0 = a0.wrapping_add(a_n);
+    *b0 = b0.wrapping_add(b_n);
+    *c0 = c0.wrapping_add(c_n);
+    *d0 = d0.wrapping_add(d_n);
 }
 
 fn k(i: usize) -> usize {
@@ -48,6 +86,28 @@ fn s(i: usize) -> u8 { S_TABLE_REDUCED[ i/16 * 4 + i%4 ] }
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::post_process::*;
+
+    #[test]
+    fn correct_digests() {
+        let input_expected_pairs = [
+            ("", 
+                "31d6cfe0d16ae931b73c59d7e0c089c0"),
+            ("a", 
+                "bde52cb31de33e46245e05fbdbd6fb24"),
+            ("message digest",
+                "d9130a8164549fe818874806e1c7014b"),
+            ("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+                "043f8582f241db351ce627e153e7f0e4")
+        ];
+
+        for (input, expected) in input_expected_pairs {
+            let data = DataType::Bytes(input.as_bytes().to_vec());
+            let digest_bytes = digest(data).unwrap();
+
+            assert_eq!(encode(digest_bytes, Encoding::Hex(false)), expected);
+        }
+    }
 
     #[test]
     fn correct_k_values() {
