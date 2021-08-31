@@ -20,17 +20,24 @@ const S_TABLE: [u8; 256] = [
     0x31, 0x44, 0x50, 0xB4, 0x8F, 0xED, 0x1F, 0x1A, 0xDB, 0x99, 0x8D, 0x33, 0x9F, 0x11, 0x83, 0x14
 ];
 
+struct MD2State {
+    md_buffer: [u8; 48],
+    checksum: [u8; 16],
+    l: u8
+}
 
 pub fn digest(data: DataType) -> std::io::Result<Vec<u8>> {
-    let mut md_buf: [u8; 48] = [0; 48];
-    let mut checksum: [u8; 16] = [0; 16];
-    let mut l = 0;
+    let mut state = MD2State {
+        md_buffer: [0; 48],
+        checksum: [0; 16],
+        l: 0
+    };
     
     // Process each chunk via last_chunk, mutating md_buf,
     // checksum and l at the same time
     let mut last_chunk: Option<Vec<u8>> = None;
     for chunk in data.into_iter(CHUNK_SIZE) {
-        process_chunk(last_chunk, &mut md_buf, &mut checksum, &mut l);
+        process_chunk(last_chunk, &mut state);
 
         last_chunk = Some(chunk?);
     }
@@ -38,37 +45,35 @@ pub fn digest(data: DataType) -> std::io::Result<Vec<u8>> {
     // Pad the last chunk of the stream 
     let padded_last_chunk = pad_md2(last_chunk.unwrap_or_default());
     for chunk in padded_last_chunk.chunks(CHUNK_SIZE) {
-        process_chunk(Some(chunk.to_vec()), &mut md_buf, &mut checksum, &mut l);
+        process_chunk(Some(chunk.to_vec()), &mut state);
     }
 
     // Process checksum chunk
-    let checksum_chunk = checksum.to_vec();
-    process_chunk(Some(checksum_chunk), &mut md_buf, &mut checksum, &mut l);
+    let checksum_chunk = state.checksum.to_vec();
+    process_chunk(Some(checksum_chunk), &mut state);
 
-    Ok(md_buf[0..16].to_vec())
+    Ok(state.md_buffer[0..16].to_vec())
 }
 
-fn process_chunk(chunk: Option<Vec<u8>>, md_buffer: &mut [u8; 48], 
-    checksum: &mut [u8; 16], l: &mut u8) {
+fn process_chunk(chunk: Option<Vec<u8>>, state: &mut MD2State) {
     if chunk.is_none() { return; }
     let chunk = chunk.unwrap();
     
     for i in 0..16 {
         let c = chunk[i];
-        md_buffer[i + 16] = c;
-        md_buffer[i + 32] = md_buffer[i] ^ c;
+        state.md_buffer[i + 16] = c;
+        state.md_buffer[i + 32] = state.md_buffer[i] ^ c;
 
         // Checksum calculation
-
-        checksum[i] ^= s(c ^ *l);
-        *l = checksum[i];
+        state.checksum[i] ^= s(c ^ state.l);
+        state.l = state.checksum[i];
     }
 
     let mut t: u8 = 0;
     for i in 0..18 {
         for j in 0..48 {
-            md_buffer[j] ^= s(t);
-            t = md_buffer[j];
+            state.md_buffer[j] ^= s(t);
+            t = state.md_buffer[j];
         }
 
         t = t.wrapping_add(i);
@@ -87,7 +92,6 @@ fn s(i: u8) -> u8 { S_TABLE[i as usize] }
 #[cfg(test)]
 mod test {
     use crate::post_process::{ encode, Encoding };
-
     use super::*;
 
     #[test]

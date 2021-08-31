@@ -1,5 +1,5 @@
 use super::helpers::*;
-use crate::data_container;
+use crate::data_container::DataType;
 
 type MdBuffer = (u32, u32, u32, u32);
 
@@ -29,12 +29,12 @@ const K_TABLE: [u32; CHUNK_SIZE] = [
 ///
 /// Returns an io::Result containing the digest as bytes 
 /// in the form of a Vec\<u8>.
-pub fn digest(data: data_container::DataType) -> std::io::Result<Vec<u8>> {
+pub fn digest(data: DataType) -> std::io::Result<Vec<u8>> {
     // Initial MD buffer
-    let mut md_buf: MdBuffer = INIT_MD_BUFFER;
+    let mut md_buf = INIT_MD_BUFFER;
 
     // Process each chunk via last_chunk and increments length
-    let mut last_chunk: Option<Vec<u8>> = None;
+    let mut last_chunk = None;
     let mut len: u64 = 0;
     for chunk in data.into_iter(CHUNK_SIZE) {
         process_chunk(last_chunk, &mut md_buf);
