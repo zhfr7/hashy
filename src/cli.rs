@@ -1,4 +1,5 @@
 use super::post_process::Encoding;
+use super::router::Algorithm;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -13,7 +14,7 @@ pub struct Opts {
 
     /// Chosen algorithm name, must be present
     #[structopt(short, long)]
-    pub algorithm: String,
+    pub algorithm: Algorithm,
 
     /// Encoding type for output hash
     #[structopt(short, long, 
