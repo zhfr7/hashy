@@ -1,3 +1,5 @@
+// Reference: https://www.rfc-editor.org/info/rfc1319 (refer errata for correction)
+
 use crate::data_container::DataType;
 
 const CHUNK_SIZE: usize = 16;

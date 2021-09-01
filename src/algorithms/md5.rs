@@ -1,3 +1,5 @@
+// Reference: https://en.wikipedia.org/wiki/MD5
+
 use super::helpers::*;
 use crate::data_container::DataType;
 
