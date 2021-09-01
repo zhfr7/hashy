@@ -66,7 +66,7 @@ fn process_chunk(chunk: Option<Vec<u8>>, (a0, b0, c0, d0): &mut MdBuffer) {
     if chunk.is_none() { return }
 
     let chunk = chunk.unwrap();
-    let words = exact_32_bit_words(&chunk);
+    let words = exact_32_bit_words(&chunk, Endianness::Little);
 
     // Main loop of MD5
     let (a_n, b_n, c_n, d_n) = 

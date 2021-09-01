@@ -23,20 +23,24 @@ pub fn md_length_padding(last_chunk: &Vec<u8>, message_length: u64,
     appended.chunks(64).map(|chunk| { chunk.to_owned() }).collect()
 }
 
-/// Returns all 32-bit little-endian words from a byte vector.
+/// Returns all 32-bit words in the given endianness from a byte vector.
 ///
 /// Trailing bytes that are insufficient to make up a u32 are ignored.
-pub fn exact_32_bit_words(bytes: &Vec<u8>) -> Vec<u32> {
+pub fn exact_32_bit_words(bytes: &Vec<u8>, endianness: Endianness) -> Vec<u32> {
     let mut words = vec![];
     let limit = (bytes.len() - bytes.len() % 4) / 4;
 
     for i in 0..limit {
-        words.push(u32::from_le_bytes([
+        let u32_bytes = [
             bytes[i*4],
             bytes[i*4 + 1],
             bytes[i*4 + 2],
             bytes[i*4 + 3],
-        ]));
+        ];
+        words.push(match endianness {
+            Endianness::Little  => u32::from_le_bytes(u32_bytes),
+            Endianness::Big     => u32::from_be_bytes(u32_bytes)
+        });
     }
 
     words
@@ -79,10 +83,10 @@ mod test {
 
     #[test]
     fn exact_32_bit_words_works() {
-        assert_eq!(exact_32_bit_words(&vec![0, 0, 0, 5]), vec![5u32.to_be()]);
-        assert_eq!(exact_32_bit_words(&vec![0, 0, 0, 5, 25, 3, 192, 40, 3]), 
+        assert_eq!(exact_32_bit_words(&vec![0, 0, 0, 5], Endianness::Big), vec![5u32]);
+        assert_eq!(exact_32_bit_words(&vec![0, 0, 0, 5, 25, 3, 192, 40, 3], Endianness::Little), 
             vec![5u32.to_be(), 0x1903c028u32.to_be()]);
-        assert_eq!(exact_32_bit_words(&vec![0, 0, 0, 5, 25, 3, 192, 40, 3, 0, 0]), 
+        assert_eq!(exact_32_bit_words(&vec![0, 0, 0, 5, 25, 3, 192, 40, 3, 0, 0], Endianness::Little), 
             vec![5u32.to_be(), 0x1903c028u32.to_be()]);
     }
 
