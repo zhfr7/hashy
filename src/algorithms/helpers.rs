@@ -1,11 +1,20 @@
+pub enum Endianness {
+    Little,
+    Big
+}
+
 /// Pads the given last chunk according to the MD spec.
 /// Returns a Vec of chunks (can contain 1 or 2 chunks)
 ///
 /// Bits "10000..." are appended until message length is 56 mod 64.
-/// Then message length is appended as a little-endian u64.
-pub fn md_pad_last(last_chunk: &Vec<u8>, message_length: u64) -> Vec<Vec<u8>> {
+/// Then message length is appended as a u64 with the chosen endianness.
+pub fn md_length_padding(last_chunk: &Vec<u8>, message_length: u64,
+    endianness: Endianness) -> Vec<Vec<u8>> {
     let mut appended = last_chunk.to_owned();
-    let len_bytes = message_length.to_le_bytes();
+    let len_bytes = match endianness {
+        Endianness::Little  => message_length.to_le_bytes(),
+        Endianness::Big     => message_length.to_be_bytes()
+    };
 
     appended.push(128);
     while appended.len() % 64 != 56 { appended.push(0); }
@@ -47,7 +56,7 @@ mod test {
     #[test]
     fn md_padding_works() {
         let chunk = "abc".as_bytes().to_owned();
-        assert_eq!(md_pad_last(&chunk, 3), vec![
+        assert_eq!(md_length_padding(&chunk, 3, Endianness::Little), vec![
             vec![97, 98, 99, 128, 0, 0, 0, 0, 0, 0, 
                   0,  0,  0, 0, 0, 0, 0, 0, 0, 0,
                   0,  0,  0, 0, 0, 0, 0, 0, 0, 0,
@@ -55,6 +64,16 @@ mod test {
                   0,  0,  0, 0, 0, 0, 0, 0, 0, 0,
                   0,  0,  0, 0, 0, 0, 3, 0, 0, 0,
                   0,  0,  0, 0]
+        ]);
+
+        assert_eq!(md_length_padding(&chunk, 3, Endianness::Big), vec![
+            vec![97, 98, 99, 128, 0, 0, 0, 0, 0, 0, 
+                  0,  0,  0, 0, 0, 0, 0, 0, 0, 0,
+                  0,  0,  0, 0, 0, 0, 0, 0, 0, 0,
+                  0,  0,  0, 0, 0, 0, 0, 0, 0, 0,
+                  0,  0,  0, 0, 0, 0, 0, 0, 0, 0,
+                  0,  0,  0, 0, 0, 0, 0, 0, 0, 0,
+                  0,  0,  0, 3]
         ]);
     }
 

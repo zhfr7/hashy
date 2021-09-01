@@ -31,7 +31,7 @@ pub fn digest(data: DataType) -> std::io::Result<Vec<u8>> {
     let last_chunk = last_chunk.unwrap_or_default();
 
     // Process last padded chunk(s)
-    for chunk in md_pad_last(&last_chunk, len) {
+    for chunk in md_length_padding(&last_chunk, len, Endianness::Little) {
         process_chunk(Some(chunk), &mut md_buf);
     }
 
