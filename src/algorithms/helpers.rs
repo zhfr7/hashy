@@ -53,6 +53,13 @@ pub fn leftrotate(n: u32, amount: u8) -> u32 {
     (n << amount) | (n >> (32 - amount)) 
 }
 
+/// Bitwise rotates a u32 value to the right.
+/// Bits that get pushed outside the u32 range would end up
+/// on the left side.
+pub fn rightrotate(n: u32, amount: u8) -> u32 {
+    (n >> amount) | (n << (32 - amount))
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
