@@ -46,9 +46,7 @@ fn process_chunk(chunk: Option<Vec<u8>>, (h0, h1, h2, h3, h4): &mut Buffer) {
     let chunk = chunk.unwrap();
     let mut words = exact_32_bit_words(&chunk, Endianness::Big);
     for i in 16..80 {
-        words.push(leftrotate(
-            words[i-3] ^ words[i-8] ^ words[i-14] ^ words[i-16],
-        1));
+        words.push((words[i-3] ^ words[i-8] ^ words[i-14] ^ words[i-16]).rotate_left(1));
     }
 
     let (a_n, b_n, c_n, d_n, e_n) = 
@@ -61,12 +59,12 @@ fn process_chunk(chunk: Option<Vec<u8>>, (h0, h1, h2, h3, h4): &mut Buffer) {
                 _       => (b ^ c ^ d)      .wrapping_add(0xCA62C1D6)
             };
 
-            let temp = leftrotate(a, 5)
+            let temp = a.rotate_left(5)
                 .wrapping_add(f_plus_k)
                 .wrapping_add(e)
                 .wrapping_add(words[i]);
 
-            (temp, a, leftrotate(b, 30), c, d)
+            (temp, a, b.rotate_left(30), c, d)
         });
 
     *h0 = h0.wrapping_add(a_n);

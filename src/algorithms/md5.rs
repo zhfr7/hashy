@@ -82,7 +82,7 @@ fn process_chunk(chunk: Option<Vec<u8>>, (a0, b0, c0, d0): &mut MdBuffer) {
 
             let f = f.wrapping_add(a).wrapping_add(k(i)).wrapping_add(words[g]);
 
-            (d, b.wrapping_add(leftrotate(f, s(i))), b, c)
+            (d, b.wrapping_add(f.rotate_left(s(i))), b, c)
         });
 
     *a0 = a0.wrapping_add(a_n);
@@ -92,7 +92,7 @@ fn process_chunk(chunk: Option<Vec<u8>>, (a0, b0, c0, d0): &mut MdBuffer) {
 }
 
 /// Returns the value in the s-table at index i
-fn s(i: usize) -> u8 { S_TABLE_REDUCED[4*(i/16) + i%4] }
+fn s(i: usize) -> u32 { S_TABLE_REDUCED[4*(i/16) + i%4] as u32 }
 
 /// Returns the value in the k-table at index i
 fn k(i: usize) -> u32 { K_TABLE[i] }

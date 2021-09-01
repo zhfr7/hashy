@@ -88,8 +88,8 @@ fn process_chunk_256(chunk: Option<Vec<u8>>, buffer: &mut [u32; 8]) {
     // Extend 16 words into 64
     let mut words = exact_32_bit_words(&chunk, Endianness::Big);
     for i in 16..64 {
-        let s0 = rightrotate(words[i-15], 7) ^ rightrotate(words[i-15], 18) ^ (words[i-15] >> 3);
-        let s1 = rightrotate(words[i-2], 17) ^ rightrotate(words[i-2],  19) ^ (words[i-2] >> 10);
+        let s0 = words[i-15].rotate_right(7) ^ words[i-15].rotate_right(18) ^ (words[i-15] >> 3);
+        let s1 = words[i-2].rotate_right(17) ^ words[i-2].rotate_right(19)  ^ (words[i-2] >> 10);
         words.push(words[i-16]
             .wrapping_add(s0)
             .wrapping_add(words[i-7])
@@ -102,13 +102,13 @@ fn process_chunk_256(chunk: Option<Vec<u8>>, buffer: &mut [u32; 8]) {
             let (a, b, c, d, e, f, g, h) =
             (h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7]);
 
-            let s1 = rightrotate(e, 6) ^ rightrotate(e, 11) ^ rightrotate(e, 25);
+            let s1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
             let ch = (e&f) ^ (!e&g);
             let temp1 = h.wrapping_add(s1)
                 .wrapping_add(ch)
                 .wrapping_add(K_TABLE_256[i])
                 .wrapping_add(words[i]);
-            let s0 = rightrotate(a, 2) ^ rightrotate(a, 13) ^ rightrotate(a, 22);
+            let s0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
             let maj = (a&b) ^ (a&c) ^ (b&c);
             let temp2 = s0.wrapping_add(maj);
 

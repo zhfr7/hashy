@@ -46,20 +46,6 @@ pub fn exact_32_bit_words(bytes: &Vec<u8>, endianness: Endianness) -> Vec<u32> {
     words
 }
 
-/// Bitwise rotates a u32 value to the left.
-/// Bits that get pushed outside the u32 range would end up
-/// on the right side.
-pub fn leftrotate(n: u32, amount: u8) -> u32 { 
-    (n << amount) | (n >> (32 - amount)) 
-}
-
-/// Bitwise rotates a u32 value to the right.
-/// Bits that get pushed outside the u32 range would end up
-/// on the left side.
-pub fn rightrotate(n: u32, amount: u8) -> u32 {
-    (n >> amount) | (n << (32 - amount))
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -95,11 +81,5 @@ mod test {
             vec![5u32.to_be(), 0x1903c028u32.to_be()]);
         assert_eq!(exact_32_bit_words(&vec![0, 0, 0, 5, 25, 3, 192, 40, 3, 0, 0], Endianness::Little), 
             vec![5u32.to_be(), 0x1903c028u32.to_be()]);
-    }
-
-    #[test]
-    fn leftrotate_works() {
-        assert_eq!(leftrotate(5, 2), 20);
-        assert_eq!(leftrotate(3489705808, 4), 718093);
     }
 }

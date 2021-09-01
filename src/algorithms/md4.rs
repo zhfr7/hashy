@@ -58,9 +58,9 @@ fn process_chunk(chunk: Option<Vec<u8>>, (a0, b0, c0, d0): &mut MdBuffer) {
                 _       => (b ^ c ^ d)      .wrapping_add(0x6ed9eba1)
             };
 
-            let a = leftrotate(
+            let a = (
                 a.wrapping_add(aux_plus_const)
-                .wrapping_add(words[k(i)]), s(i));
+                .wrapping_add(words[k(i)])).rotate_left(s(i));
 
             (d, a, b, c)
         });
@@ -83,7 +83,7 @@ fn k(i: usize) -> usize {
     }
 }
 
-fn s(i: usize) -> u8 { S_TABLE_REDUCED[ i/16 * 4 + i%4 ] }
+fn s(i: usize) -> u32 { S_TABLE_REDUCED[ i/16 * 4 + i%4 ] as u32 }
 
 #[cfg(test)]
 mod test {
@@ -124,7 +124,7 @@ mod test {
 
     #[test]
     fn correct_s_values() {
-        let left: Vec<u8> = [0, 5, 10, 15, 16, 21, 26, 31, 32, 37, 42, 47]
+        let left: Vec<u32> = [0, 5, 10, 15, 16, 21, 26, 31, 32, 37, 42, 47]
                     .iter()
                     .map(|&i| s(i)).collect();
         let right = vec![
