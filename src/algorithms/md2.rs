@@ -93,12 +93,12 @@ fn s(i: u8) -> u8 { S_TABLE[i as usize] }
 
 #[cfg(test)]
 mod test {
-    use crate::post_process::{ encode, Encoding };
     use super::*;
+    use crate::algorithms::helpers::test_helper::test_digest;
 
     #[test]
-    fn digest_returns_correctly() {
-        let input_expected_pairs = [
+    fn correct_digests() {
+        test_digest(&digest, &[
             ("",
                 "8350e5a3e24c153df2275c9f80692773"),
             ("a",
@@ -107,14 +107,7 @@ mod test {
                 "ab4f496bfb2a530b219ff33031fe06b0"),
             ("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
                 "da33def2a42df13975352846c30338cd")
-        ];
-
-        for (input, expected) in input_expected_pairs {
-            let data = DataType::Bytes(input.as_bytes().to_vec());
-            let digest_bytes = digest(data).unwrap();
-
-            assert_eq!(expected, encode(digest_bytes, Encoding::Hex(false)));
-        }
+        ]);
     }
 
     #[test]

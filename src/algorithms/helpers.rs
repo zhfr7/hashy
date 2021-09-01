@@ -46,6 +46,23 @@ pub fn exact_32_bit_words(bytes: &Vec<u8>, endianness: Endianness) -> Vec<u32> {
     words
 }
 
+pub mod test_helper {
+    use crate::DataType;
+    use crate::post_process::*;
+
+    /// Asserts the digest of each input as a lowercase hex string
+    /// with its corresponding expected &str.
+    pub fn test_digest(digest_fun: &dyn Fn(DataType) -> std::io::Result<Vec<u8>>, 
+        input_expected_pairs: &[(&str, &str)]) {
+        for (input, expected) in input_expected_pairs {
+            let data = DataType::Bytes(input.as_bytes().to_vec());
+            let digest_bytes = digest_fun(data).unwrap();
+
+            assert_eq!(*expected, encode(digest_bytes, Encoding::Hex(false)));
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

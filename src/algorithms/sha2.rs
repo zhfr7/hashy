@@ -123,24 +123,17 @@ fn process_chunk_256(chunk: Option<Vec<u8>>, buffer: &mut [u32; 8]) {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{data_container::DataType, post_process::*};
+    use test_helper::test_digest;
 
     #[test]
     fn correct_sha256_digests() {
-        let input_expected_pairs = [
+        test_digest(&digest_256, &[
             ("", 
                 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"),
             ("The quick brown fox jumps over the lazy dog", 
                 "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592"),
             ("This is a very long string with the purpose of exceeding the chunk length of 64 bytes",
                 "7ad7a19a23f6f2285256b72b0854d14c80e04fcc2ae1173f1ffeb9df296ee954")
-        ];
-
-        for (input, expected) in input_expected_pairs {
-            let data = DataType::Bytes(input.as_bytes().to_vec());
-            let digest_bytes = digest_256(data).unwrap();
-
-            assert_eq!(encode(digest_bytes, Encoding::Hex(false)), expected);
-        }
+        ]);
     }
 }
