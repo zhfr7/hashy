@@ -61,6 +61,10 @@ pub fn digest_256(data: DataType) -> std::io::Result<Vec<u8>> {
     digest_32(data, INIT_BUFFER_256)
 }
 
+pub fn digest_512(data: DataType) -> std::io::Result<Vec<u8>> {
+    digest_64(data, INIT_BUFFER_512)
+}
+
 pub fn digest_32(data: DataType, init_buffer: [u32; 8]) -> std::io::Result<Vec<u8>> {
     let mut buf = init_buffer;
 
@@ -89,6 +93,34 @@ pub fn digest_32(data: DataType, init_buffer: [u32; 8]) -> std::io::Result<Vec<u
     Ok(out.concat())
 }
 
+pub fn digest_64(data: DataType, init_buffer: [u64; 8]) -> std::io::Result<Vec<u8>> {
+    let mut buf = init_buffer;
+
+    // Process each chunk via last_chunk
+    let mut last_chunk = None;
+    let mut len: u128 = 0;
+    for chunk in data.into_iter(CHUNK_SIZE_512) {
+        process_chunk_64(last_chunk, &mut buf);
+
+        let chunk_bytes = chunk?;
+        len = len.wrapping_add((chunk_bytes.len() * 8) as u128);
+        last_chunk = Some(chunk_bytes);
+    }
+
+    // Default last_chunk to empty Vec if None
+    let last_chunk = last_chunk.unwrap_or_default();
+
+    // Process remaining padded chunk(s)
+    for chunk in md_length_padding_64(&last_chunk, len, Endianness::Big) {
+        process_chunk_64(Some(chunk), &mut buf);
+    }
+
+    let out: Vec<[u8; 8]> = buf.iter()
+        .map(|word| {word.to_be_bytes()})
+        .collect();
+    Ok(out.concat())
+}
+
 fn process_chunk_32(chunk: Option<Vec<u8>>, buffer: &mut [u32; 8]) {
     if chunk.is_none() { return }
 
@@ -111,13 +143,53 @@ fn process_chunk_32(chunk: Option<Vec<u8>>, buffer: &mut [u32; 8]) {
             let (a, b, c, d, e, f, g, h) =
             (h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7]);
 
+            let s0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
             let s1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
             let ch = (e&f) ^ (!e&g);
             let temp1 = h.wrapping_add(s1)
                 .wrapping_add(ch)
                 .wrapping_add(K_TABLE_256[i])
                 .wrapping_add(words[i]);
-            let s0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
+            let maj = (a&b) ^ (a&c) ^ (b&c);
+            let temp2 = s0.wrapping_add(maj);
+
+            [temp1.wrapping_add(temp2), a, b, c, d.wrapping_add(temp1), e, f, g]
+        });
+
+    for i in 0..8 {
+        buffer[i] = buffer[i].wrapping_add(buffer_n[i]);
+    }
+}
+
+fn process_chunk_64(chunk: Option<Vec<u8>>, buffer: &mut [u64; 8]) {
+    if chunk.is_none() { return }
+
+    let chunk = chunk.unwrap();
+
+    // Extend 16 words into 80
+    let mut words = exact_64_bit_words(&chunk, Endianness::Big);
+    for i in 16..80 {
+        let s0 = words[i-15].rotate_right(1) ^ words[i-15].rotate_right(8) ^ (words[i-15] >> 7);
+        let s1 = words[i-2].rotate_right(19) ^ words[i-2].rotate_right(61)  ^ (words[i-2] >> 6);
+        words.push(words[i-16]
+            .wrapping_add(s0)
+            .wrapping_add(words[i-7])
+            .wrapping_add(s1));
+    }
+
+    // Main loop
+    let buffer_n = (0..80).fold(*buffer, 
+        |h, i| {
+            let (a, b, c, d, e, f, g, h) =
+            (h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7]);
+
+            let s0 = a.rotate_right(28) ^ a.rotate_right(34) ^ a.rotate_right(39);
+            let s1 = e.rotate_right(14) ^ e.rotate_right(18) ^ e.rotate_right(41);
+            let ch = (e&f) ^ (!e&g);
+            let temp1 = h.wrapping_add(s1)
+                .wrapping_add(ch)
+                .wrapping_add(K_TABLE_512[i])
+                .wrapping_add(words[i]);
             let maj = (a&b) ^ (a&c) ^ (b&c);
             let temp2 = s0.wrapping_add(maj);
 
@@ -155,6 +227,18 @@ mod test {
                 "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592"),
             ("This is a very long string with the purpose of exceeding the chunk length of 64 bytes",
                 "7ad7a19a23f6f2285256b72b0854d14c80e04fcc2ae1173f1ffeb9df296ee954")
+        ]);
+    }
+
+    #[test]
+    fn correct_sha512_digests() {
+        test_digest(&digest_512, &[
+            ("", 
+                "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e"),
+            ("The quick brown fox jumps over the lazy dog", 
+                "07e547d9586f6a73f73fbac0435ed76951218fb7d0c8d788a309d785436bbb642e93a252a954f23912547d1e8a3b5ed6e1bfd7097821233fa0538f3db854fee6"),
+            ("This is a very long string with the purpose of exceeding the chunk length of 128 bytes, which can be a bit of a pain to write but whatever I guess",
+                "4ad3d21be15ceda6dba084544e36d1849f8d3e6a5965d5d8adf0cac416ecafda15839fa7579bde7017fa7c68aef781a5007b048d0f4272a6a93dc290526d542a")
         ]);
     }
 }
