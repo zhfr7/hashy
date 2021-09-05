@@ -1,4 +1,6 @@
-// Reference: https://en.wikipedia.org/wiki/SHA-2
+// References: 
+// https://en.wikipedia.org/wiki/SHA-2,
+// https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
 
 use crate::DataType;
 use super::helpers::*;
@@ -22,6 +24,18 @@ const INIT_BUFFER_512: [u64; 8] = [
     0x3c6ef372fe94f82b, 0xa54ff53a5f1d36f1, 
     0x510e527fade682d1, 0x9b05688c2b3e6c1f, 
     0x1f83d9abfb41bd6b, 0x5be0cd19137e2179
+];
+const INIT_BUFFER_512_224: [u64; 8] = [
+    0x8C3D37C819544DA2, 0x73E1996689DCD4D6,
+    0x1DFAB7AE32FF9C82, 0x679DD514582F9FCF,
+    0x0F6D2B697BD44DA8, 0x77E36F7304C48942,
+    0x3F9D85A86A1D36C8, 0x1112E6AD91D692A1 
+];
+const INIT_BUFFER_512_256: [u64; 8] = [
+    0x22312194FC2BF72C, 0x9F555FA3C84C64C2,
+    0x2393B86B6F53B151, 0x963877195940EABD,
+    0x96283EE2A88EFFE3, 0xBE5E1E2553863992,
+    0x2B0199FC2C85B8AA, 0x0EB72DDC81C52CA2 
 ];
 const K_TABLE_256: [u32; 64] = [
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
@@ -61,8 +75,23 @@ pub fn digest_256(data: DataType) -> std::io::Result<Vec<u8>> {
     digest_32(data, INIT_BUFFER_256)
 }
 
+pub fn digest_384(data: DataType) -> std::io::Result<Vec<u8>> {
+    let result = digest_64(data, INIT_BUFFER_384)?;
+    Ok(result[..48].to_vec())
+}
+
 pub fn digest_512(data: DataType) -> std::io::Result<Vec<u8>> {
     digest_64(data, INIT_BUFFER_512)
+}
+
+pub fn digest_512_224(data: DataType) -> std::io::Result<Vec<u8>> {
+    let result = digest_64(data, INIT_BUFFER_512_224)?;
+    Ok(result[..28].to_vec())
+}
+
+pub fn digest_512_256(data: DataType) -> std::io::Result<Vec<u8>> {
+    let result = digest_64(data, INIT_BUFFER_512_256)?;
+    Ok(result[..32].to_vec())
 }
 
 pub fn digest_32(data: DataType, init_buffer: [u32; 8]) -> std::io::Result<Vec<u8>> {
@@ -231,6 +260,18 @@ mod test {
     }
 
     #[test]
+    fn correct_sha384_digests() {
+        test_digest(&digest_384, &[
+            ("", 
+                "38b060a751ac96384cd9327eb1b1e36a21fdb71114be07434c0cc7bf63f6e1da274edebfe76f65fbd51ad2f14898b95b"),
+            ("The quick brown fox jumps over the lazy dog", 
+                "ca737f1014a48f4c0b6dd43cb177b0afd9e5169367544c494011e3317dbf9a509cb1e5dc1e85a941bbee3d7f2afbc9b1"),
+            ("This is a very long string with the purpose of exceeding the chunk length of 128 bytes, which can be a bit of a pain to write but whatever I guess",
+                "5fa9a4958d5a80f310adb8b272251086117f409625acdfccd315ba7fd43ce6714c15efaa927ae214af79871b893a2fa9")
+        ]);
+    }
+
+    #[test]
     fn correct_sha512_digests() {
         test_digest(&digest_512, &[
             ("", 
@@ -239,6 +280,30 @@ mod test {
                 "07e547d9586f6a73f73fbac0435ed76951218fb7d0c8d788a309d785436bbb642e93a252a954f23912547d1e8a3b5ed6e1bfd7097821233fa0538f3db854fee6"),
             ("This is a very long string with the purpose of exceeding the chunk length of 128 bytes, which can be a bit of a pain to write but whatever I guess",
                 "4ad3d21be15ceda6dba084544e36d1849f8d3e6a5965d5d8adf0cac416ecafda15839fa7579bde7017fa7c68aef781a5007b048d0f4272a6a93dc290526d542a")
+        ]);
+    }
+
+    #[test]
+    fn correct_sha512_224_digests() {
+        test_digest(&digest_512_224, &[
+            ("", 
+                "6ed0dd02806fa89e25de060c19d3ac86cabb87d6a0ddd05c333b84f4"),
+            ("The quick brown fox jumps over the lazy dog", 
+                "944cd2847fb54558d4775db0485a50003111c8e5daa63fe722c6aa37"),
+            ("This is a very long string with the purpose of exceeding the chunk length of 128 bytes, which can be a bit of a pain to write but whatever I guess",
+                "467a1e9707042d5374c16c1dbb4e6f16ba1da198f616381bbf6d7806")
+        ]);
+    }
+
+    #[test]
+    fn correct_sha512_256_digests() {
+        test_digest(&digest_512_256, &[
+            ("", 
+                "c672b8d1ef56ed28ab87c3622c5114069bdd3ad7b8f9737498d0c01ecef0967a"),
+            ("The quick brown fox jumps over the lazy dog", 
+                "dd9d67b371519c339ed8dbd25af90e976a1eeefd4ad3d889005e532fc5bef04d"),
+            ("This is a very long string with the purpose of exceeding the chunk length of 128 bytes, which can be a bit of a pain to write but whatever I guess",
+                "9995b16812727187c944185c5833759f6c73df58aa46248dc0b7763ab5409d33")
         ]);
     }
 }
