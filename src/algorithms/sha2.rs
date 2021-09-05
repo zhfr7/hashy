@@ -52,14 +52,23 @@ const K_TABLE_512: [u64; 80] = [
     0x431d67c49c100d4c, 0x4cc5d4becb3e42b6, 0x597f299cfc657e2a, 0x5fcb6fab3ad6faec, 0x6c44198c4a475817
 ];
 
+pub fn digest_224(data: DataType) -> std::io::Result<Vec<u8>> {
+    let result = digest_32(data, INIT_BUFFER_224)?;
+    Ok(result[..28].to_vec())
+}
+
 pub fn digest_256(data: DataType) -> std::io::Result<Vec<u8>> {
-    let mut buf = INIT_BUFFER_256;
+    digest_32(data, INIT_BUFFER_256)
+}
+
+pub fn digest_32(data: DataType, init_buffer: [u32; 8]) -> std::io::Result<Vec<u8>> {
+    let mut buf = init_buffer;
 
     // Process each chunk via last_chunk
     let mut last_chunk = None;
     let mut len: u64 = 0;
     for chunk in data.into_iter(CHUNK_SIZE_256) {
-        process_chunk_256(last_chunk, &mut buf);
+        process_chunk_32(last_chunk, &mut buf);
 
         let chunk_bytes = chunk?;
         len = len.wrapping_add((chunk_bytes.len() * 8) as u64);
@@ -71,7 +80,7 @@ pub fn digest_256(data: DataType) -> std::io::Result<Vec<u8>> {
 
     // Process remaining padded chunk(s)
     for chunk in md_length_padding(&last_chunk, len, Endianness::Big) {
-        process_chunk_256(Some(chunk), &mut buf);
+        process_chunk_32(Some(chunk), &mut buf);
     }
 
     let out: Vec<[u8; 4]> = buf.iter()
@@ -80,7 +89,7 @@ pub fn digest_256(data: DataType) -> std::io::Result<Vec<u8>> {
     Ok(out.concat())
 }
 
-fn process_chunk_256(chunk: Option<Vec<u8>>, buffer: &mut [u32; 8]) {
+fn process_chunk_32(chunk: Option<Vec<u8>>, buffer: &mut [u32; 8]) {
     if chunk.is_none() { return }
 
     let chunk = chunk.unwrap();
@@ -124,6 +133,18 @@ fn process_chunk_256(chunk: Option<Vec<u8>>, buffer: &mut [u32; 8]) {
 mod test {
     use super::*;
     use test_helper::test_digest;
+
+    #[test]
+    fn correct_sha224_digests() {
+        test_digest(&digest_224, &[
+            ("", 
+                "d14a028c2a3a2bc9476102bb288234c415a2b01f828ea62ac5b3e42f"),
+            ("The quick brown fox jumps over the lazy dog", 
+                "730e109bd7a8a32b1cb9d9a09aa2325d2430587ddbc0c38bad911525"),
+            ("This is a very long string with the purpose of exceeding the chunk length of 64 bytes",
+                "c0ebfc1f8de0114969f0164ba381bc3cce984e225adfa79011392cc9")
+        ]);
+    }
 
     #[test]
     fn correct_sha256_digests() {
