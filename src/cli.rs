@@ -1,5 +1,5 @@
-use super::post_process::Encoding;
-use super::router::Algorithm;
+use crate::post_process::Encoding;
+use crate::router::Algorithm;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]

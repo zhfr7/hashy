@@ -6,10 +6,10 @@ mod post_process;
 
 use cli::Opts;
 use data_container::DataType;
-use std::{fs::File, io::{self, BufReader}};
+use std::{fs::File, io::BufReader};
 use structopt::StructOpt;
 
-fn main() -> io::Result<()> {
+fn main() -> anyhow::Result<()> {
     let opts = Opts::from_args();
     println!("{:?}", opts);
     
