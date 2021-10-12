@@ -9,6 +9,19 @@ pub enum Encoding {
     Binary
 }
 
+impl Encoding {
+    pub fn from_str(encoding: &str) -> Result<Encoding, String> {
+        let enc_lower = encoding.to_lowercase();
+        match enc_lower.as_str() {
+            "hex"       => Ok(Encoding::Hex(false)),
+            "hex_upper" => Ok(Encoding::Hex(true)),
+            "base64"       => Ok(Encoding::Base64),
+            "bin"       => Ok(Encoding::Binary),
+            _           => Err(format!("Unknown encoding type: {}", enc_lower))
+        }
+    }
+}
+
 /// Encodes the given bytes according to the encoding type given
 pub fn encode(bytes: Vec<u8>, encoding: Encoding) -> String {
     match encoding {
