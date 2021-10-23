@@ -4,188 +4,87 @@ use crate::{algorithms::helpers::{Endianness, exact_64_bit_words}, data_containe
 // - https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
 // - https://keccak.team/keccak_specs_summary.html
 
-type Lanes = [[u64; 5]; 5];
+type KState = [u8; 200];
+type KLanes = [[u64; 5]; 5];
 
-const ROTATION_OFFSETS: [[u32; 5]; 5] = [
-    [0, 36, 3, 41, 18],
-    [1, 44, 10, 45, 2],
-    [62, 6, 43, 15, 61],
-    [28, 55, 25, 21, 56],
-    [27, 20, 39, 8, 14]
-];
+fn keccak_f_1600_on_lanes(lanes: &mut KLanes) {
+    let mut r: u8 = 1;
 
-const ROUND_CONSTANTS: [u64; 24] = [
-    0x0000000000000001, 0x0000000000008082,
-    0x800000000000808A, 0x8000000080008000,
-    0x000000000000808B, 0x0000000080000001,
-    0x8000000080008081, 0x8000000000008009,
-    0x000000000000008A, 0x0000000000000088,
-    0x0000000080008009, 0x000000008000000A,
-    0x000000008000808B, 0x800000000000008B,
-    0x8000000000008089, 0x8000000000008003,
-    0x8000000000008002, 0x8000000000000080,
-    0x000000000000800A, 0x800000008000000A,
-    0x8000000080008081, 0x8000000000008080,
-    0x0000000080000001, 0x8000000080008008,
-];
+    for round in 0..24 {
+        // phi
+        let c: Vec<u64> = (0..5)
+            .map(|x| {
+                lanes[x][0] ^ lanes[x][1] ^ lanes[x][2] ^ lanes[x][3] ^ lanes[x][4]
+            }).collect();
+        let d: Vec<u64> = (0..5)
+            .map(|x| c[(x+4) % 5] ^ c[(x+1) % 5].rotate_left(1) ).collect();
 
-struct KeccakState {
-    lanes: Lanes
-}
-
-impl KeccakState {
-    pub fn new() -> Self {
-        KeccakState { 
-            lanes: [[0; 5]; 5]
-        }
-    }
-    
-    pub fn from_bytes(bytes: &Vec<u8>) -> Self {
-        let mut out = KeccakState::new();
-        let mut i = 0;
-
-        for y in 0..5 {
-            for x in 0..5 {
-                out.lanes[x][y] = u64::from_be_bytes(
-                    [bytes[i], bytes[i+1], bytes[i+2], bytes[i+3],
-                    bytes[i+4], bytes[i+5], bytes[i+6], bytes[i+7]]
-                );
-
-                i += 8;
-            }
-        }
-
-        out
-    }
-
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let mut out = vec![];
-
-        for y in 0..5 {
-            for x in 0..5 {
-                let mut lane = self.lanes[x][y].to_be_bytes().to_vec();
-                out.append(&mut lane);
-            }
-        }
-
-        out
-    }
-}
-
-fn keccak(r: usize, message: DataType, d: u8, output_len: usize)
-    -> std::io::Result<Vec<u8>> {
-    let mut state = KeccakState::new();
-
-    let mut last_block = None;
-    let mut len_mod_r = 0;
-
-    // Absorbing phase
-    for block in message.into_iter(r/8) {
-        keccak_process_block(last_block, r, &mut state);
-        
-        let block_bytes = block?;
-        len_mod_r = (len_mod_r + block_bytes.len()*8) % r;
-        last_block = Some(block_bytes);
-    }
-
-    let mut remaining = last_block.unwrap_or_default();
-
-    // Pad with d, then pad with 00...0001
-    remaining.push(d);
-    len_mod_r = (len_mod_r + 8) % r;
-
-    while len_mod_r != 0 {
-        remaining.push(0);
-        len_mod_r = (len_mod_r + 8) % r;
-    }
-    *remaining.last_mut().unwrap() = 0x80;
-
-    for rem_block in remaining.chunks_exact(r/8) {
-        keccak_process_block(Some(rem_block.to_owned()), r, &mut state);
-    }
-
-    // Squeezing phase
-    let mut out = vec![];
-    while out.len() < output_len / 8 {
         for x in 0..5 {
-            for y in 0..5 {
-                if x + 5*y >= r/64 { break; }
+            for y in 0..5 { lanes[x][y] ^= d[x] }
+        }
+        
+        // rho and pi
+        let (mut x, mut y) = (1, 0);
+        let mut current = lanes[x][y];
 
-                let mut bytes = state.lanes[x][y].to_be_bytes().to_vec();
-                out.append(&mut bytes);
+        for t in 0..24 {
+            let temp = y;
+            y = (2*x + 3*y) % 5;
+            x = temp;
+
+            lanes[x][y] = current.rotate_left(((t+1) * (t+2)) / 2);
+            current = lanes[x][y];
+        }
+
+        // chi
+        for y in 0..5 {
+            let t: Vec<u64> = (0..5).map(|x| lanes[x][y] ).collect();
+
+            for x in 0..5 {
+                lanes[x][y] = t[x] ^ (!t[(x+1) % 5] & t[(x+2) % 5]);
             }
         }
 
-        keccak_f_1600(&mut state);
-    }
-
-    Ok(out)
-}
-
-fn keccak_process_block(block: Option<Vec<u8>>, r: usize, state: &mut KeccakState) {
-    if block.is_none() { return; }
-
-    let block = block.unwrap();
-
-    let block_lanes = exact_64_bit_words(&block, Endianness::Big);
-
-    for x in 0..5 {
-        for y in 0..5 {
-            if x + 5*y >= r/64 { break; }
-
-            state.lanes[x][y] ^= block_lanes[x + 5*y];
+        // iota
+        for j in 0..7u8 {
+            r = (r << 1) ^ ((r >> 7) * 0x71);
+            if r & 2 == 2 {
+                lanes[0][0] ^= 1 << ((1 << j) - 1);
+            }
         }
-    }
-
-    keccak_f_1600(state);
-}
-
-/// Represents the Keccak-f[1600] permutation function with 24 rounds.
-/// Mutates the given state argument.
-fn keccak_f_1600(state: &mut KeccakState) {
-    for i in 0..24 {
-        round(state, ROUND_CONSTANTS[i]);
     }
 }
 
-fn round(state: &mut KeccakState, round_constant: u64) {
-    // phi
-    let c: Vec<u64> = (0..5).map(|x| {
-        state.lanes[x][0] ^ 
-        state.lanes[x][1] ^ 
-        state.lanes[x][2] ^ 
-        state.lanes[x][3] ^ 
-        state.lanes[x][4]
-    }).collect();
+fn state_to_lanes(state: KState) -> KLanes {
+    let u64_words = exact_64_bit_words(&state.to_vec(), Endianness::Big);
 
-    let d: Vec<u64> = (0..5).map(|x| {
-        c[(x+4) % 5] ^ c[(x+1) % 5].rotate_right(1)
-    }).collect();
-
+    let mut lanes = [[0; 5]; 5];
     for x in 0..5 {
         for y in 0..5 {
-            state.lanes[x][y] ^= d[x];
+            lanes[x][y] = u64_words[x + 5*y];
         }
     }
 
-    // rho and pi
-    let mut b = [[0; 5]; 5];
-    for x in 0..5 {
+    lanes
+}
+
+fn lanes_to_state(lanes: KLanes) -> KState {
+    let mut u64_words = [0; 25];
+    for x in 0..5 { 
         for y in 0..5 {
-            b[y][(2*x + 3*y) % 5] = 
-                state.lanes[x][y].rotate_right(ROTATION_OFFSETS[x][y]);
+            u64_words[x + 5*y] = lanes[x][y]
         }
     }
 
-    // chi
-    for x in 0..5 {
-        for y in 0..5 {
-            state.lanes[x][y] = b[x][y] ^ (!b[(x+1) % 5][y] & b[(x+2) % 5][y]);
+    let mut state = [0; 200];
+    for i in 0..25 {
+        let bytes = u64_words[i].to_be_bytes();
+        for j in 0..8 {
+            state[8*i + j] = bytes[j];
         }
     }
 
-    // iota
-    state.lanes[0][0] ^= round_constant;
+    state
 }
 
 #[cfg(test)]
@@ -195,30 +94,39 @@ mod test {
     use crate::post_process::*;
 
     #[test]
-    fn from_bytes_correct() {
-        let mut bytes = vec![128, 0, 0, 0, 0, 9, 0, 128];
-        for _ in 0..192 { bytes.push(0) }
+    fn state_to_lanes_conversion() {
+        let mut state = [0; 200];
+        let zero_zeroth: [u8; 8] = [1, 2, 3, 4, 5, 6, 7, 8];
+        for i in 0..8 {
+            state[i] = zero_zeroth[i];
+        }
 
-        let state = KeccakState::from_bytes(&bytes);
-        println!("{:x}", state.lanes[0][0]);
-        assert_eq!(state.lanes[0][0], 0x8000000000090080);
+        let two_fourth: [u8; 8] = [8, 7, 6, 5, 4, 3, 2, 1];
+        for i in 176..184 {
+            state[i] = two_fourth[i-176];
+        }
+
+        let lanes = state_to_lanes(state);
+        assert_eq!(0x102030405060708, lanes[0][0]);
+        assert_eq!(0x807060504030201, lanes[2][4]);
     }
 
     #[test]
-    fn to_bytes_correct() {
-        let mut bytes = vec![128, 0, 0, 0, 0, 9, 0, 128];
-        for _ in 0..192 { bytes.push(0) }
+    fn lanes_to_state_conversion() {
+        let mut lanes = [[0; 5]; 5];
+        lanes[0][0] = 0x102030405060708;
+        lanes[2][4] = 0x807060504030201;
 
-        let state = KeccakState::from_bytes(&bytes);
-        assert_eq!(state.to_bytes(), bytes);
-    }
+        let state = lanes_to_state(lanes);
+        println!("{:?}", state);
+        assert_eq!(1, state[0]);
+        assert_eq!(2, state[1]);
+        assert_eq!(3, state[2]);
+        assert_eq!(4, state[3]);
 
-    #[test]
-    fn keccak_returns_correctly() {
-        let data = DataType::Bytes("".as_bytes().to_vec());
-        let digest_bytes = keccak(1152, data, 0x06, 224).unwrap();
-        let digest = encode(digest_bytes, Encoding::Hex(false));
-
-        assert_eq!("6b4e03423667dbb73b6e15454f0eb1abd4597f9a1b078e3f5b5a6bc7", digest);
+        assert_eq!(8, state[176]);
+        assert_eq!(7, state[177]);
+        assert_eq!(6, state[178]);
+        assert_eq!(5, state[179]);
     }
 }
