@@ -1,3 +1,5 @@
+use crate::{algorithms::helpers::{Endianness, exact_64_bit_words}, data_container::DataType};
+
 // References:
 // - https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
 // - https://keccak.team/keccak_specs_summary.html
@@ -70,6 +72,76 @@ impl KeccakState {
     }
 }
 
+fn keccak(r: usize, message: DataType, d: u8, output_len: usize)
+    -> std::io::Result<Vec<u8>> {
+    let mut state = KeccakState::new();
+
+    let mut last_block = None;
+    let mut len_mod_r = 0;
+
+    // Absorbing phase
+    for block in message.into_iter(r/8) {
+        keccak_process_block(last_block, r, &mut state);
+        
+        let block_bytes = block?;
+        len_mod_r = (len_mod_r + block_bytes.len()*8) % r;
+        last_block = Some(block_bytes);
+    }
+
+    let mut remaining = last_block.unwrap_or_default();
+
+    // Pad with d, then pad with 00...0001
+    remaining.push(d);
+    len_mod_r = (len_mod_r + 8) % r;
+
+    while len_mod_r != 0 {
+        remaining.push(0);
+        len_mod_r = (len_mod_r + 8) % r;
+    }
+    *remaining.last_mut().unwrap() = 0x80;
+
+    for rem_block in remaining.chunks_exact(r/8) {
+        keccak_process_block(Some(rem_block.to_owned()), r, &mut state);
+    }
+
+    // Squeezing phase
+    let mut out = vec![];
+    while out.len() < output_len / 8 {
+        for x in 0..5 {
+            for y in 0..5 {
+                if x + 5*y >= r/64 { break; }
+
+                let mut bytes = state.lanes[x][y].to_be_bytes().to_vec();
+                out.append(&mut bytes);
+            }
+        }
+
+        keccak_f_1600(&mut state);
+    }
+
+    Ok(out)
+}
+
+fn keccak_process_block(block: Option<Vec<u8>>, r: usize, state: &mut KeccakState) {
+    if block.is_none() { return; }
+
+    let block = block.unwrap();
+
+    let block_lanes = exact_64_bit_words(&block, Endianness::Big);
+
+    for x in 0..5 {
+        for y in 0..5 {
+            if x + 5*y >= r/64 { break; }
+
+            state.lanes[x][y] ^= block_lanes[x + 5*y];
+        }
+    }
+
+    keccak_f_1600(state);
+}
+
+/// Represents the Keccak-f[1600] permutation function with 24 rounds.
+/// Mutates the given state argument.
 fn keccak_f_1600(state: &mut KeccakState) {
     for i in 0..24 {
         round(state, ROUND_CONSTANTS[i]);
@@ -119,6 +191,8 @@ fn round(state: &mut KeccakState, round_constant: u64) {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::DataType;
+    use crate::post_process::*;
 
     #[test]
     fn from_bytes_correct() {
@@ -137,5 +211,14 @@ mod test {
 
         let state = KeccakState::from_bytes(&bytes);
         assert_eq!(state.to_bytes(), bytes);
+    }
+
+    #[test]
+    fn keccak_returns_correctly() {
+        let data = DataType::Bytes("".as_bytes().to_vec());
+        let digest_bytes = keccak(1152, data, 0x06, 224).unwrap();
+        let digest = encode(digest_bytes, Encoding::Hex(false));
+
+        assert_eq!("6b4e03423667dbb73b6e15454f0eb1abd4597f9a1b078e3f5b5a6bc7", digest);
     }
 }
