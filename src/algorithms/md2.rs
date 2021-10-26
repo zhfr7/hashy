@@ -94,11 +94,11 @@ fn s(i: u8) -> u8 { S_TABLE[i as usize] }
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::algorithms::helpers::test_helper::test_digest;
+    use crate::test_digest;
 
     #[test]
     fn correct_digests() {
-        test_digest(&digest, &[
+        test_digest!(digest,
             ("",
                 "8350e5a3e24c153df2275c9f80692773"),
             ("a",
@@ -107,7 +107,7 @@ mod test {
                 "ab4f496bfb2a530b219ff33031fe06b0"),
             ("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
                 "da33def2a42df13975352846c30338cd")
-        ]);
+        );
     }
 
     #[test]

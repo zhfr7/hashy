@@ -100,18 +100,18 @@ fn k(i: usize) -> u32 { K_TABLE[i] }
 #[cfg(test)]
 mod test {
     use super::*;
-    use test_helper::test_digest;
+    use crate::test_digest;
 
     #[test]
     fn correct_digests() {
-        test_digest(&digest, &[
+        test_digest!(digest,
             ("", 
                 "d41d8cd98f00b204e9800998ecf8427e"),
             ("The quick brown fox jumps over the lazy dog", 
                 "9e107d9d372bb6826bd81d3542a419d6"),
             ("This is a very long string with the purpose of exceeding the chunk length of 64 bytes",
                 "ba70257a277a031df015d5741af768f3")
-        ]);
+        );
     }
 
     #[test]

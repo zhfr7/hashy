@@ -184,7 +184,7 @@ mod test {
     use super::*;
     use super::keccak;
     use crate::DataType;
-    use crate::algorithms::helpers::test_helper::test_digest;
+    use crate::test_digest;
 
     #[test]
     fn state_to_lanes_conversion() {
@@ -392,11 +392,11 @@ mod test {
 
     #[test]
     fn keccak_test() {
-        test_digest(&sha3_224_test, &[
+        test_digest!(sha3_224_test,
             ("",    "6b4e03423667dbb73b6e15454f0eb1abd4597f9a1b078e3f5b5a6bc7"),
             ("abc", "e642824c3f8cf24ad09234ee7d3c766fc9a3a5168d0c94ad73b46fdf"),
             ("The quick brown fox jumps over the lazy dog",
                 "d15dadceaa4d5d7bb3b48f446421d542e08ad8887305e28d58335795")
-        ]);
+        );
     }
 }

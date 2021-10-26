@@ -88,11 +88,11 @@ fn s(i: usize) -> u32 { S_TABLE_REDUCED[ i/16 * 4 + i%4 ] as u32 }
 #[cfg(test)]
 mod test {
     use super::*;
-    use test_helper::test_digest;
+    use crate::test_digest;
 
     #[test]
     fn correct_digests() {
-        test_digest(&digest, &[
+        test_digest!(digest,
             ("", 
                 "31d6cfe0d16ae931b73c59d7e0c089c0"),
             ("a", 
@@ -101,7 +101,7 @@ mod test {
                 "d9130a8164549fe818874806e1c7014b"),
             ("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
                 "043f8582f241db351ce627e153e7f0e4")
-        ]);
+        );
     }
 
     #[test]

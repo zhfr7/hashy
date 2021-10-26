@@ -88,21 +88,22 @@ pub fn exact_64_bit_words(bytes: &Vec<u8>, endianness: Endianness) -> Vec<u64> {
     words
 }
 
-pub mod test_helper {
-    use crate::DataType;
-    use crate::post_process::*;
-
-    /// Asserts the digest of each input as a lowercase hex string
-    /// with its corresponding expected &str.
-    pub fn test_digest(digest_fun: &dyn Fn(DataType) -> std::io::Result<Vec<u8>>, 
-        input_expected_pairs: &[(&str, &str)]) {
-        for (input, expected) in input_expected_pairs {
+/// Tests the digest function, in which it compares
+/// the digested input with the intended output.
+/// Expects a (&str, &str) tuple for the io_pair (input, output).
+#[cfg(test)]
+#[macro_export]
+macro_rules! test_digest {
+    ($digest_fun:expr, $( $io_pair:expr ), *) => {
+        use crate::post_process::*;
+        $(
+            let (input, expected) = $io_pair;
             let data = DataType::Bytes(input.as_bytes().to_vec());
-            let digest_bytes = digest_fun(data).unwrap();
+            let digest_bytes = $digest_fun(data).unwrap();
 
             assert_eq!(*expected, encode(digest_bytes, Encoding::Hex(false)));
-        }
-    }
+        )*
+    };
 }
 
 #[cfg(test)]

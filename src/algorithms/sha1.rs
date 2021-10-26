@@ -77,17 +77,17 @@ fn process_chunk(chunk: Option<Vec<u8>>, (h0, h1, h2, h3, h4): &mut Buffer) {
 #[cfg(test)]
 mod test {
     use super::*;
-    use test_helper::test_digest;
+    use crate::test_digest;
 
     #[test]
     fn correct_digests() {
-        test_digest(&digest, &[
+        test_digest!(digest,
             ("", 
                 "da39a3ee5e6b4b0d3255bfef95601890afd80709"),
             ("The quick brown fox jumps over the lazy dog", 
                 "2fd4e1c67a2d28fced849ee1bb76e7391b93eb12"),
             ("This is a very long string with the purpose of exceeding the chunk length of 64 bytes",
                 "37c8456433925d4771764b4dad3b8b1c76019d1b")
-        ]);
+        );
     }
 }

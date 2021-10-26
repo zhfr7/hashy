@@ -233,77 +233,77 @@ fn process_chunk_64(chunk: Option<Vec<u8>>, buffer: &mut [u64; 8]) {
 #[cfg(test)]
 mod test {
     use super::*;
-    use test_helper::test_digest;
+    use crate::test_digest;
 
     #[test]
     fn correct_sha224_digests() {
-        test_digest(&digest_224, &[
+        test_digest!(digest_224,
             ("", 
                 "d14a028c2a3a2bc9476102bb288234c415a2b01f828ea62ac5b3e42f"),
             ("The quick brown fox jumps over the lazy dog", 
                 "730e109bd7a8a32b1cb9d9a09aa2325d2430587ddbc0c38bad911525"),
             ("This is a very long string with the purpose of exceeding the chunk length of 64 bytes",
                 "c0ebfc1f8de0114969f0164ba381bc3cce984e225adfa79011392cc9")
-        ]);
+        );
     }
 
     #[test]
     fn correct_sha256_digests() {
-        test_digest(&digest_256, &[
+        test_digest!(digest_256,
             ("", 
                 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"),
             ("The quick brown fox jumps over the lazy dog", 
                 "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592"),
             ("This is a very long string with the purpose of exceeding the chunk length of 64 bytes",
                 "7ad7a19a23f6f2285256b72b0854d14c80e04fcc2ae1173f1ffeb9df296ee954")
-        ]);
+        );
     }
 
     #[test]
     fn correct_sha384_digests() {
-        test_digest(&digest_384, &[
+        test_digest!(digest_384,
             ("", 
                 "38b060a751ac96384cd9327eb1b1e36a21fdb71114be07434c0cc7bf63f6e1da274edebfe76f65fbd51ad2f14898b95b"),
             ("The quick brown fox jumps over the lazy dog", 
                 "ca737f1014a48f4c0b6dd43cb177b0afd9e5169367544c494011e3317dbf9a509cb1e5dc1e85a941bbee3d7f2afbc9b1"),
             ("This is a very long string with the purpose of exceeding the chunk length of 128 bytes, which can be a bit of a pain to write but whatever I guess",
                 "5fa9a4958d5a80f310adb8b272251086117f409625acdfccd315ba7fd43ce6714c15efaa927ae214af79871b893a2fa9")
-        ]);
+        );
     }
 
     #[test]
     fn correct_sha512_digests() {
-        test_digest(&digest_512, &[
+        test_digest!(digest_512,
             ("", 
                 "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e"),
             ("The quick brown fox jumps over the lazy dog", 
                 "07e547d9586f6a73f73fbac0435ed76951218fb7d0c8d788a309d785436bbb642e93a252a954f23912547d1e8a3b5ed6e1bfd7097821233fa0538f3db854fee6"),
             ("This is a very long string with the purpose of exceeding the chunk length of 128 bytes, which can be a bit of a pain to write but whatever I guess",
                 "4ad3d21be15ceda6dba084544e36d1849f8d3e6a5965d5d8adf0cac416ecafda15839fa7579bde7017fa7c68aef781a5007b048d0f4272a6a93dc290526d542a")
-        ]);
+        );
     }
 
     #[test]
     fn correct_sha512_224_digests() {
-        test_digest(&digest_512_224, &[
+        test_digest!(digest_512_224,
             ("", 
                 "6ed0dd02806fa89e25de060c19d3ac86cabb87d6a0ddd05c333b84f4"),
             ("The quick brown fox jumps over the lazy dog", 
                 "944cd2847fb54558d4775db0485a50003111c8e5daa63fe722c6aa37"),
             ("This is a very long string with the purpose of exceeding the chunk length of 128 bytes, which can be a bit of a pain to write but whatever I guess",
                 "467a1e9707042d5374c16c1dbb4e6f16ba1da198f616381bbf6d7806")
-        ]);
+        );
     }
 
     #[test]
     fn correct_sha512_256_digests() {
-        test_digest(&digest_512_256, &[
+        test_digest!(digest_512_256,
             ("", 
                 "c672b8d1ef56ed28ab87c3622c5114069bdd3ad7b8f9737498d0c01ecef0967a"),
             ("The quick brown fox jumps over the lazy dog", 
                 "dd9d67b371519c339ed8dbd25af90e976a1eeefd4ad3d889005e532fc5bef04d"),
             ("This is a very long string with the purpose of exceeding the chunk length of 128 bytes, which can be a bit of a pain to write but whatever I guess",
                 "9995b16812727187c944185c5833759f6c73df58aa46248dc0b7763ab5409d33")
-        ]);
+        );
     }
 }
