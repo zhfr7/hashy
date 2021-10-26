@@ -1,12 +1,14 @@
-use crate::{algorithms::helpers::{Endianness, exact_64_bit_words}, data_container::DataType};
-
 // References:
 // - https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
 // - https://keccak.team/keccak_specs_summary.html
 
+use crate::algorithms::helpers::{Endianness, exact_64_bit_words};
+use crate::data_container::DataType;
+
 type KState = [u8; 200];
 type KLanes = [[u64; 5]; 5];
 
+/// Step-mapping functions required for the Keccak-f\[1600\] function.
 mod step_mapping_funs {
     use super::KLanes;
 
@@ -16,7 +18,7 @@ mod step_mapping_funs {
                     lanes[x][0] ^ lanes[x][1] ^ lanes[x][2] ^ lanes[x][3] ^ lanes[x][4]
                 }).collect();
         let d: Vec<u64> = (0..5)
-            .map(|x| c[(x+4) % 5] ^ c[(x+1) % 5].rotate_left(1) ).collect();
+            .map(|x| c[(x+4) % 5] ^ c[(x+1) % 5].rotate_left(1)).collect();
     
         for x in 0..5 {
             for y in 0..5 { lanes[x][y] ^= d[x] }
@@ -40,7 +42,7 @@ mod step_mapping_funs {
     
     pub fn chi(lanes: &mut KLanes) {
         for y in 0..5 {
-            let t: Vec<u64> = (0..5).map(|x| lanes[x][y] ).collect();
+            let t: Vec<u64> = (0..5).map(|x| lanes[x][y]).collect();
     
             for x in 0..5 {
                 lanes[x][y] = t[x] ^ (!t[(x+1) % 5] & t[(x+2) % 5]);
@@ -58,26 +60,16 @@ mod step_mapping_funs {
     }
 }
 
-fn keccak_f_1600_on_lanes(lanes: &mut KLanes) {
-    let mut r: u8 = 1;
-    use step_mapping_funs::*;
-
-    for _round in 0..24 {
-        theta(lanes);
-        rho_and_pi(lanes);
-        chi(lanes);
-        iota(lanes, &mut r);
-    }
-}
-
-fn keccak_f_1600(state: KState) -> KState {
-    let mut lanes = state_to_lanes(state);
-    keccak_f_1600_on_lanes(&mut lanes);
-
-    lanes_to_state(lanes)
-}
-
-fn keccak(r: usize, data: DataType, d_suffix: u8, out_byte_len: usize)
+/// Represents the Keccak\[r, c\] sponge function, but with c omitted.
+/// r + c is assumed to be 1600.
+/// 
+/// # Arguments
+/// 
+/// * `r` - bitrate
+/// * `data` - the DataType struct which holds the input data
+/// * `d_suffix` - delimited suffix byte, unique to certain hash functions
+/// * `out_byte_len` - intended number of output bytes
+pub fn keccak(r: usize, data: DataType, d_suffix: u8, out_byte_len: usize)
     -> std::io::Result<Vec<u8>> {
     let mut state = [0; 200];
 
@@ -95,10 +87,10 @@ fn keccak(r: usize, data: DataType, d_suffix: u8, out_byte_len: usize)
             state = keccak_f_1600(state);
         }
 
-        let block_bytes = block?;
-        last_block = Some(block_bytes);
+        last_block = Some(block?);
     }
 
+    // Process last block(s)
     let mut last_bytes = last_block.unwrap_or_default();
     last_bytes.push(d_suffix);
     while last_bytes.len() % r_bytes != r_bytes - 1 {
@@ -118,17 +110,41 @@ fn keccak(r: usize, data: DataType, d_suffix: u8, out_byte_len: usize)
     let mut out = vec![];
     let mut bytes_left = out_byte_len;
     while bytes_left > 0 {
-        let block_size = if out_byte_len < r_bytes { out_byte_len } else { r_bytes };
+        let block_size = out_byte_len.min(r_bytes);
         for i in 0..block_size {
             out.push(state[i]);
         }
         bytes_left -= block_size;
+
         if bytes_left > 0 {
             state = keccak_f_1600(state);
         }
     }
 
     Ok(out)
+}
+
+/// Represents the Keccak-f\[1600\] function for w = 6 (64-bit)
+/// with 24 rounds. Accepts a 5x5 array of u64s defined as lanes.
+fn keccak_f_1600_on_lanes(lanes: &mut KLanes) {
+    let mut r: u8 = 1;
+    use step_mapping_funs::*;
+
+    for _round in 0..24 {
+        theta(lanes);
+        rho_and_pi(lanes);
+        chi(lanes);
+        iota(lanes, &mut r);
+    }
+}
+
+/// Intermediary function for Keccak-f\[1600\] that accepts state
+/// (200-byte array) instead of lanes.
+fn keccak_f_1600(state: KState) -> KState {
+    let mut lanes = state_to_lanes(state);
+    keccak_f_1600_on_lanes(&mut lanes);
+
+    lanes_to_state(lanes)
 }
 
 fn state_to_lanes(state: KState) -> KLanes {
