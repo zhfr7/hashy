@@ -1,8 +1,8 @@
 mod algorithms;
 mod cli;
 mod data_container;
-mod router;
 mod post_process;
+mod router;
 
 use cli::Opts;
 use data_container::DataType;

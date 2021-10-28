@@ -1,5 +1,5 @@
 use crate::algorithms::*;
-use crate::data_container::DataType;
+use crate::DataType;
 use strum_macros::EnumString;
 
 #[derive(Debug, EnumString)]
@@ -29,7 +29,7 @@ pub enum Algorithm {
 }
 
 impl Algorithm {
-    pub fn digest(&self, data: DataType) -> std::io::Result<Vec<u8>> {
+    pub fn digest(&self, data: DataType) -> Result<Vec<u8>, anyhow::Error> {
         match &self {
             Self::MD2 => md2::digest(data),
             Self::MD4 => md4::digest(data),

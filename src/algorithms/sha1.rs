@@ -9,7 +9,7 @@ const CHUNK_SIZE: usize = 64;
 const INIT_BUFFER: Buffer = 
     (0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0);
 
-pub fn digest(data: DataType) -> std::io::Result<Vec<u8>> {
+pub fn digest(data: DataType) -> DigestResult {
     let mut buf = INIT_BUFFER;
 
     // Process each chunk via last_chunk

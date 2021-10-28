@@ -2,8 +2,8 @@
 // - https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
 // - https://keccak.team/keccak_specs_summary.html
 
-use crate::algorithms::helpers::{Endianness, exact_64_bit_words};
 use crate::data_container::DataType;
+use super::helpers::{DigestResult, Endianness, exact_64_bit_words};
 
 type KState = [u8; 200];
 type KLanes = [[u64; 5]; 5];
@@ -70,9 +70,11 @@ mod step_mapping_funs {
 /// * `d_suffix` - delimited suffix byte, unique to certain hash functions
 /// * `out_byte_len` - intended number of output bytes
 pub fn keccak(r: usize, data: DataType, d_suffix: u8, out_byte_len: usize)
-    -> std::io::Result<Vec<u8>> {
+    -> DigestResult {
+    if r % 8 != 0 { return Err(anyhow::anyhow!(
+        "impl error (keccak) - r must be a multiple of 8")) }
+    
     let mut state = [0; 200];
-
     let r_bytes = r / 8;
 
     // Absorbing phase
@@ -386,7 +388,7 @@ mod test {
         assert_eq!(0xb7db673642034e6b, lanes[0][0]);
     }
 
-    fn sha3_224_test(data: DataType) -> std::io::Result<Vec<u8>> {
+    fn sha3_224_test(data: DataType) -> DigestResult {
         keccak(1152, data, 0x06, 224/8)
     }
 

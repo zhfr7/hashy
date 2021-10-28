@@ -66,35 +66,35 @@ const K_TABLE_512: [u64; 80] = [
     0x431d67c49c100d4c, 0x4cc5d4becb3e42b6, 0x597f299cfc657e2a, 0x5fcb6fab3ad6faec, 0x6c44198c4a475817
 ];
 
-pub fn digest_224(data: DataType) -> std::io::Result<Vec<u8>> {
+pub fn digest_224(data: DataType) -> DigestResult {
     let result = digest_32(data, INIT_BUFFER_224)?;
     Ok(result[..28].to_vec())
 }
 
-pub fn digest_256(data: DataType) -> std::io::Result<Vec<u8>> {
+pub fn digest_256(data: DataType) -> DigestResult {
     digest_32(data, INIT_BUFFER_256)
 }
 
-pub fn digest_384(data: DataType) -> std::io::Result<Vec<u8>> {
+pub fn digest_384(data: DataType) -> DigestResult {
     let result = digest_64(data, INIT_BUFFER_384)?;
     Ok(result[..48].to_vec())
 }
 
-pub fn digest_512(data: DataType) -> std::io::Result<Vec<u8>> {
+pub fn digest_512(data: DataType) -> DigestResult {
     digest_64(data, INIT_BUFFER_512)
 }
 
-pub fn digest_512_224(data: DataType) -> std::io::Result<Vec<u8>> {
+pub fn digest_512_224(data: DataType) -> DigestResult {
     let result = digest_64(data, INIT_BUFFER_512_224)?;
     Ok(result[..28].to_vec())
 }
 
-pub fn digest_512_256(data: DataType) -> std::io::Result<Vec<u8>> {
+pub fn digest_512_256(data: DataType) -> DigestResult {
     let result = digest_64(data, INIT_BUFFER_512_256)?;
     Ok(result[..32].to_vec())
 }
 
-pub fn digest_32(data: DataType, init_buffer: [u32; 8]) -> std::io::Result<Vec<u8>> {
+pub fn digest_32(data: DataType, init_buffer: [u32; 8]) -> DigestResult {
     let mut buf = init_buffer;
 
     // Process each chunk via last_chunk
@@ -122,7 +122,7 @@ pub fn digest_32(data: DataType, init_buffer: [u32; 8]) -> std::io::Result<Vec<u
     Ok(out.concat())
 }
 
-pub fn digest_64(data: DataType, init_buffer: [u64; 8]) -> std::io::Result<Vec<u8>> {
+pub fn digest_64(data: DataType, init_buffer: [u64; 8]) -> DigestResult {
     let mut buf = init_buffer;
 
     // Process each chunk via last_chunk

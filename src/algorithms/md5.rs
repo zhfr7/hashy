@@ -1,7 +1,7 @@
 // Reference: https://en.wikipedia.org/wiki/MD5
 
-use super::helpers::*;
 use crate::data_container::DataType;
+use super::helpers::*;
 
 type MdBuffer = (u32, u32, u32, u32);
 
@@ -31,7 +31,7 @@ const K_TABLE: [u32; CHUNK_SIZE] = [
 ///
 /// Returns an io::Result containing the digest as bytes 
 /// in the form of a Vec\<u8>.
-pub fn digest(data: DataType) -> std::io::Result<Vec<u8>> {
+pub fn digest(data: DataType) -> DigestResult {
     // Initial MD buffer
     let mut md_buf = INIT_MD_BUFFER;
 

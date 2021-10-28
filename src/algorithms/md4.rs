@@ -1,7 +1,7 @@
 // Reference: https://datatracker.ietf.org/doc/html/rfc1320
 
 use crate::data_container::DataType;
-use crate::algorithms::helpers::*;
+use super::helpers::*;
 
 type MdBuffer = (u32, u32, u32, u32);
 
@@ -13,7 +13,7 @@ const S_TABLE_REDUCED: [u8; 12] = [
     3, 9, 11, 15
 ];
 
-pub fn digest(data: DataType) -> std::io::Result<Vec<u8>> {
+pub fn digest(data: DataType) -> DigestResult {
     let mut md_buf = INIT_MD_BUFFER;
 
     // Process each chunk via last_chunk

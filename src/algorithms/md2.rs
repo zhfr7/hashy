@@ -1,6 +1,7 @@
 // Reference: https://www.rfc-editor.org/info/rfc1319 (refer errata for correction)
 
 use crate::data_container::DataType;
+use super::helpers::DigestResult;
 
 const CHUNK_SIZE: usize = 16;
 const S_TABLE: [u8; 256] = [
@@ -28,7 +29,7 @@ struct MD2State {
     l: u8
 }
 
-pub fn digest(data: DataType) -> std::io::Result<Vec<u8>> {
+pub fn digest(data: DataType) -> DigestResult {
     let mut state = MD2State {
         md_buffer: [0; 48],
         checksum: [0; 16],

@@ -1,3 +1,6 @@
+/// Use this to define the output type of a digest function
+pub type DigestResult = Result<Vec<u8>, anyhow::Error>;
+
 pub enum Endianness {
     Little,
     Big
