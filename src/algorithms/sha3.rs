@@ -4,20 +4,16 @@ use crate::data_container::DataType;
 use super::helpers::DigestResult;
 use super::keccak::keccak;
 
-pub fn digest_224(data: DataType) -> DigestResult {
-    keccak(1152, data, 0x06, 224)
-}
-
-pub fn digest_256(data: DataType) -> DigestResult {
-    keccak(1088, data, 0x06, 256)
-}
-
-pub fn digest_384(data: DataType) -> DigestResult {
-    keccak(832, data, 0x06, 384)
-}
-
-pub fn digest_512(data: DataType) -> DigestResult {
-    keccak(576, data, 0x06, 512)
+/// Returns a DigestResult of a SHA3-[out_len] algorithm,
+/// where out_len = intended output length in bits.
+/// 
+/// out_len is constrained to 224, 256, 384, 512. Other values
+/// would result in an Err(...).
+pub fn digest(data: DataType, out_len: usize) -> DigestResult {
+    if ![224, 256, 384, 512].contains(&out_len) { 
+        return Err(anyhow::anyhow!("Impl error: invalid output size")); }
+    
+    keccak(1600 - 2*out_len, data, 0x06, out_len)
 }
 
 pub fn digest_shake_128(data: DataType, out_len: usize) -> DigestResult {
@@ -33,9 +29,14 @@ mod test {
     use super::*;
     use crate::test_digest;
 
+    fn sha3_224(data: DataType) -> DigestResult { digest(data, 224) }
+    fn sha3_256(data: DataType) -> DigestResult { digest(data, 256) }
+    fn sha3_384(data: DataType) -> DigestResult { digest(data, 384) }
+    fn sha3_512(data: DataType) -> DigestResult { digest(data, 512) }
+
     #[test]
     fn sha3_224_correct() {
-        test_digest!(digest_224,
+        test_digest!(sha3_224,
             ("",    "6b4e03423667dbb73b6e15454f0eb1abd4597f9a1b078e3f5b5a6bc7"),
             ("abc", "e642824c3f8cf24ad09234ee7d3c766fc9a3a5168d0c94ad73b46fdf"),
             ("The quick brown fox jumps over the lazy dog",
@@ -47,7 +48,7 @@ mod test {
 
     #[test]
     fn sha3_256_correct() {
-        test_digest!(digest_256,
+        test_digest!(sha3_256,
             ("",    "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a"),
             ("abc", "3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532"),
             ("The quick brown fox jumps over the lazy dog",
@@ -59,7 +60,7 @@ mod test {
 
     #[test]
     fn sha3_384_correct() {
-        test_digest!(digest_384,
+        test_digest!(sha3_384,
             ("",    
                 "0c63a75b845e4f7d01107d852e4c2485c51a50aaaa94fc61995e71bbee983a2ac3713831264adb47fb6bd1e058d5f004"),
             ("abc", 
@@ -73,7 +74,7 @@ mod test {
 
     #[test]
     fn sha3_512_correct() {
-        test_digest!(digest_512,
+        test_digest!(sha3_512,
             ("",    
                 "a69f73cca23a9ac5c8b567dc185a756e97c982164fe25859e0d1dcc1475c80a615b2123af1f5f94c11e3e9402c3ac558f500199d95b6d3e301758586281dcd26"),
             ("abc", 
@@ -85,19 +86,11 @@ mod test {
         );
     }
 
-    fn shake_128_helper_1(data: DataType) -> DigestResult {
-        digest_shake_128(data, 64)
-    }
-    fn shake_128_helper_2(data: DataType) -> DigestResult {
-        digest_shake_128(data, 184)
-    }
+    fn shake_128_helper_1(data: DataType) -> DigestResult { digest_shake_128(data, 64) }
+    fn shake_128_helper_2(data: DataType) -> DigestResult { digest_shake_128(data, 184) }
     
-    fn shake_256_helper_1(data: DataType) -> DigestResult {
-        digest_shake_256(data, 72)
-    }
-    fn shake_256_helper_2(data: DataType) -> DigestResult {
-        digest_shake_256(data, 240)
-    }
+    fn shake_256_helper_1(data: DataType) -> DigestResult { digest_shake_256(data, 72) }
+    fn shake_256_helper_2(data: DataType) -> DigestResult { digest_shake_256(data, 240) }
 
     #[test]
     fn shake_128_correct() {
