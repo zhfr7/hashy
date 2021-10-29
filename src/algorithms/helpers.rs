@@ -98,13 +98,13 @@ pub fn exact_64_bit_words(bytes: &Vec<u8>, endianness: Endianness) -> Vec<u64> {
 #[macro_export]
 macro_rules! test_digest {
     ($digest_fun:expr, $( $io_pair:expr ), *) => {
-        use crate::post_process::*;
         $(
             let (input, expected) = $io_pair;
-            let data = DataType::Bytes(input.as_bytes().to_vec());
+            let data = crate::DataType::Bytes(input.as_bytes().to_vec());
             let digest_bytes = $digest_fun(data).unwrap();
 
-            assert_eq!(*expected, encode(digest_bytes, Encoding::Hex(false)));
+            assert_eq!(*expected, crate::post_process::encode(digest_bytes, 
+                crate::post_process::Encoding::Hex(false)));
         )*
     };
 }

@@ -65,17 +65,21 @@ mod step_mapping_funs {
 /// 
 /// # Arguments
 /// 
-/// * `r` - bitrate
+/// * `r` - bitrate (multiple of 8)
 /// * `data` - the DataType struct which holds the input data
 /// * `d_suffix` - delimited suffix byte, unique to certain hash functions
-/// * `out_byte_len` - intended number of output bytes
-pub fn keccak(r: usize, data: DataType, d_suffix: u8, out_byte_len: usize)
+/// * `out_len` - intended number of output bits (has to be multiple of 8)
+pub fn keccak(r: usize, data: DataType, d_suffix: u8, out_len: usize)
     -> DigestResult {
     if r % 8 != 0 { return Err(anyhow::anyhow!(
         "impl error (keccak) - r must be a multiple of 8")) }
+
+    if out_len % 8 != 0 { return Err(anyhow::anyhow!(
+        "parameter error - output size must be a multiple of 8")) }
     
     let mut state = [0; 200];
     let r_bytes = r / 8;
+    let out_byte_len = out_len / 8;
 
     // Absorbing phase
     let mut last_block: Option<Vec<u8>> = None;
@@ -389,7 +393,7 @@ mod test {
     }
 
     fn sha3_224_test(data: DataType) -> DigestResult {
-        keccak(1152, data, 0x06, 224/8)
+        keccak(1152, data, 0x06, 224)
     }
 
     #[test]
