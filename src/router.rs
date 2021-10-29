@@ -1,50 +1,23 @@
 use crate::algorithms::*;
 use crate::DataType;
-use strum_macros::EnumString;
 
-#[derive(Debug, EnumString)]
-pub enum Algorithm {
-    #[strum(serialize = "md2")]
-    MD2,
-    #[strum(serialize = "md4")]
-    MD4,
-    #[strum(serialize = "md5")]
-    MD5,
-    #[strum(serialize = "sha1")]
-    SHA1,
-    #[strum(serialize = "sha-224")]
-    SHA2_224,
-    #[strum(serialize = "sha-256", serialize = "sha2")]
-    SHA2_256,
-    #[strum(serialize = "sha-384")]
-    SHA2_384,
-    #[strum(serialize = "sha-512")]
-    SHA2_512,
-    #[strum(serialize = "sha-512-224")]
-    SHA2_512_224,
-    #[strum(serialize = "sha-512-256")]
-    SHA2_512_256,
-    #[strum(serialize = "sha3-256")]
-    SHA3_256
-}
+pub fn digest_from_algorithm(data: DataType, algorithm: String) -> Result<Vec<u8>, anyhow::Error> {
+    let algo_lower = algorithm.to_lowercase();
+    let algo_specs: Vec<&str> = algo_lower.split('-').collect();
 
-impl Algorithm {
-    pub fn digest(&self, data: DataType) -> Result<Vec<u8>, anyhow::Error> {
-        match &self {
-            Self::MD2 => md2::digest(data),
-            Self::MD4 => md4::digest(data),
-            Self::MD5 => md5::digest(data),
-            Self::SHA1 => sha1::digest(data),
-            Self::SHA2_224 => sha2::digest(data, 256, 224),
-            Self::SHA2_256 => sha2::digest(data, 256, 256),
-            Self::SHA2_384 => sha2::digest(data, 512, 384),
-            Self::SHA2_512 => sha2::digest(data, 512, 512),
-            Self::SHA2_512_224 => sha2::digest(data, 512, 224),
-            Self::SHA2_512_256 => sha2::digest(data, 512, 256),
-            Self::SHA3_256 => Ok(dummy())
-        }
+    match algo_specs.as_slice() {
+        ["md2"]         => md2::digest(data),
+        ["md4"]         => md4::digest(data),
+        ["md5"]         => md5::digest(data),
+        ["sha1"]        => sha1::digest(data),
+        ["sha", "224"]  => sha2::digest(data, 256, 224), 
+        ["sha", "256"] | ["sha2"] => sha2::digest(data, 256, 256), 
+        ["sha", "384"]  => sha2::digest(data, 512, 384),
+        ["sha", "512"]  => sha2::digest(data, 512, 512),
+        ["sha", "512", "224"]   => sha2::digest(data, 512, 224),
+        ["sha", "512", "256"]   => sha2::digest(data, 512, 256),
+        other => Err(anyhow::anyhow!(
+            format!("algorithm {} cannot be found", other.join("-"))
+        ))
     }
 }
-
-// Used for testing unimplemented algorithms
-fn dummy() -> Vec<u8> { vec![0, 1, 2, 3] }

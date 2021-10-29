@@ -20,7 +20,7 @@ fn main() -> anyhow::Result<()> {
         DataType::Bytes(opts.input.as_bytes().to_owned())
     };
 
-    let out_bytes = opts.algorithm.digest(data)?;
+    let out_bytes = router::digest_from_algorithm(data, opts.algorithm)?;
     let out_encoded = post_process::encode(out_bytes, opts.encoding);
 
     println!("{}", out_encoded);

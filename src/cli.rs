@@ -1,5 +1,4 @@
 use crate::post_process::Encoding;
-use crate::router::Algorithm;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -14,7 +13,7 @@ pub struct Opts {
 
     /// Chosen algorithm name, must be present
     #[structopt(short, long)]
-    pub algorithm: Algorithm,
+    pub algorithm: String,
 
     /// Encoding type for output hash
     #[structopt(short, long, 
