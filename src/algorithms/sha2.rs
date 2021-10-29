@@ -2,6 +2,7 @@
 // https://en.wikipedia.org/wiki/SHA-2,
 // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
 
+use anyhow::anyhow;
 use crate::DataType;
 use super::helpers::*;
 
@@ -66,35 +67,27 @@ const K_TABLE_512: [u64; 80] = [
     0x431d67c49c100d4c, 0x4cc5d4becb3e42b6, 0x597f299cfc657e2a, 0x5fcb6fab3ad6faec, 0x6c44198c4a475817
 ];
 
-pub fn digest_224(data: DataType) -> DigestResult {
-    let result = digest_32(data, INIT_BUFFER_224)?;
-    Ok(result[..28].to_vec())
+/// Returns the digest for the SHA2 algorithm family.
+/// state_size and out_len defines which algorithm variant is used.
+/// 
+/// Only the following conditions are accepted for both variables
+/// (out_len specified in the variant name), other combinations would return an Err(...):
+/// * state_size = 256 : SHA-224 and -256,
+/// * state_size = 512 : SHA-384, -512, -512-224, -512-256
+pub fn digest(data: DataType, state_size: usize, out_len: usize) -> DigestResult {
+    match (state_size, out_len) {
+        (256, 224) => Ok(digest_32(data, INIT_BUFFER_224)?[..28].to_vec()),
+        (256, 256) => digest_32(data, INIT_BUFFER_256), 
+        (512, 384) => Ok(digest_64(data, INIT_BUFFER_384)?[..48].to_vec()),
+        (512, 512) => digest_64(data, INIT_BUFFER_512),
+        (512, 224) => Ok(digest_64(data, INIT_BUFFER_512_224)?[..28].to_vec()),
+        (512, 256) => Ok(digest_64(data, INIT_BUFFER_512_256)?[..32].to_vec()),
+
+        _ => { Err(anyhow!("Impl error: invalid state/output size combinaation for SHA2")) }
+    }
 }
 
-pub fn digest_256(data: DataType) -> DigestResult {
-    digest_32(data, INIT_BUFFER_256)
-}
-
-pub fn digest_384(data: DataType) -> DigestResult {
-    let result = digest_64(data, INIT_BUFFER_384)?;
-    Ok(result[..48].to_vec())
-}
-
-pub fn digest_512(data: DataType) -> DigestResult {
-    digest_64(data, INIT_BUFFER_512)
-}
-
-pub fn digest_512_224(data: DataType) -> DigestResult {
-    let result = digest_64(data, INIT_BUFFER_512_224)?;
-    Ok(result[..28].to_vec())
-}
-
-pub fn digest_512_256(data: DataType) -> DigestResult {
-    let result = digest_64(data, INIT_BUFFER_512_256)?;
-    Ok(result[..32].to_vec())
-}
-
-pub fn digest_32(data: DataType, init_buffer: [u32; 8]) -> DigestResult {
+fn digest_32(data: DataType, init_buffer: [u32; 8]) -> DigestResult {
     let mut buf = init_buffer;
 
     // Process each chunk via last_chunk
@@ -122,7 +115,7 @@ pub fn digest_32(data: DataType, init_buffer: [u32; 8]) -> DigestResult {
     Ok(out.concat())
 }
 
-pub fn digest_64(data: DataType, init_buffer: [u64; 8]) -> DigestResult {
+fn digest_64(data: DataType, init_buffer: [u64; 8]) -> DigestResult {
     let mut buf = init_buffer;
 
     // Process each chunk via last_chunk
@@ -235,9 +228,16 @@ mod test {
     use super::*;
     use crate::test_digest;
 
+    fn sha_224(data: DataType) -> DigestResult { digest(data, 256, 224) }
+    fn sha_256(data: DataType) -> DigestResult { digest(data, 256, 256) }
+    fn sha_384(data: DataType) -> DigestResult { digest(data, 512, 384) }
+    fn sha_512(data: DataType) -> DigestResult { digest(data, 512, 512) }
+    fn sha_512_224(data: DataType) -> DigestResult { digest(data, 512, 224) }
+    fn sha_512_256(data: DataType) -> DigestResult { digest(data, 512, 256) }
+
     #[test]
     fn correct_sha224_digests() {
-        test_digest!(digest_224,
+        test_digest!(sha_224,
             ("", 
                 "d14a028c2a3a2bc9476102bb288234c415a2b01f828ea62ac5b3e42f"),
             ("The quick brown fox jumps over the lazy dog", 
@@ -249,7 +249,7 @@ mod test {
 
     #[test]
     fn correct_sha256_digests() {
-        test_digest!(digest_256,
+        test_digest!(sha_256,
             ("", 
                 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"),
             ("The quick brown fox jumps over the lazy dog", 
@@ -261,7 +261,7 @@ mod test {
 
     #[test]
     fn correct_sha384_digests() {
-        test_digest!(digest_384,
+        test_digest!(sha_384,
             ("", 
                 "38b060a751ac96384cd9327eb1b1e36a21fdb71114be07434c0cc7bf63f6e1da274edebfe76f65fbd51ad2f14898b95b"),
             ("The quick brown fox jumps over the lazy dog", 
@@ -273,7 +273,7 @@ mod test {
 
     #[test]
     fn correct_sha512_digests() {
-        test_digest!(digest_512,
+        test_digest!(sha_512,
             ("", 
                 "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e"),
             ("The quick brown fox jumps over the lazy dog", 
@@ -285,7 +285,7 @@ mod test {
 
     #[test]
     fn correct_sha512_224_digests() {
-        test_digest!(digest_512_224,
+        test_digest!(sha_512_224,
             ("", 
                 "6ed0dd02806fa89e25de060c19d3ac86cabb87d6a0ddd05c333b84f4"),
             ("The quick brown fox jumps over the lazy dog", 
@@ -297,7 +297,7 @@ mod test {
 
     #[test]
     fn correct_sha512_256_digests() {
-        test_digest!(digest_512_256,
+        test_digest!(sha_512_256,
             ("", 
                 "c672b8d1ef56ed28ab87c3622c5114069bdd3ad7b8f9737498d0c01ecef0967a"),
             ("The quick brown fox jumps over the lazy dog", 

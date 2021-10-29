@@ -35,12 +35,12 @@ impl Algorithm {
             Self::MD4 => md4::digest(data),
             Self::MD5 => md5::digest(data),
             Self::SHA1 => sha1::digest(data),
-            Self::SHA2_224 => sha2::digest_224(data),
-            Self::SHA2_256 => sha2::digest_256(data),
-            Self::SHA2_384 => sha2::digest_384(data),
-            Self::SHA2_512 => sha2::digest_512(data),
-            Self::SHA2_512_224 => sha2::digest_512_224(data),
-            Self::SHA2_512_256 => sha2::digest_512_256(data),
+            Self::SHA2_224 => sha2::digest(data, 256, 224),
+            Self::SHA2_256 => sha2::digest(data, 256, 256),
+            Self::SHA2_384 => sha2::digest(data, 512, 384),
+            Self::SHA2_512 => sha2::digest(data, 512, 512),
+            Self::SHA2_512_224 => sha2::digest(data, 512, 224),
+            Self::SHA2_512_256 => sha2::digest(data, 512, 256),
             Self::SHA3_256 => Ok(dummy())
         }
     }
