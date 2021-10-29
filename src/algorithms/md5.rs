@@ -27,10 +27,8 @@ const K_TABLE: [u32; CHUNK_SIZE] = [
 0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
 ];
 
-/// Generates an MD5 digest from the given DataType object.
-///
-/// Returns an io::Result containing the digest as bytes 
-/// in the form of a Vec\<u8>.
+/// Generates an MD5 digest from the given DataType
+/// and returns it as a DigestResult.
 pub fn digest(data: DataType) -> DigestResult {
     // Initial MD buffer
     let mut md_buf = INIT_MD_BUFFER;
@@ -46,10 +44,8 @@ pub fn digest(data: DataType) -> DigestResult {
         last_chunk = Some(chunk_bytes);
     }
 
-    // Default last chunk to an empty Vec
-    let last_chunk = last_chunk.unwrap_or_default();
-
     // Process remaining chunk(s) after padding the last chunk
+    let last_chunk = last_chunk.unwrap_or_default();
     for chunk in md_length_padding(&last_chunk, len, Endianness::Little) {
         process_chunk(Some(chunk), &mut md_buf);
     }
@@ -62,13 +58,14 @@ pub fn digest(data: DataType) -> DigestResult {
 }
 
 /// Processes a chunk and mutates the MD buffer accordingly.
+/// Ignores if the chunk is None.
 fn process_chunk(chunk: Option<Vec<u8>>, (a0, b0, c0, d0): &mut MdBuffer) {
     if chunk.is_none() { return }
 
     let chunk = chunk.unwrap();
     let words = exact_32_bit_words(&chunk, Endianness::Little);
 
-    // Main loop of MD5
+    // Main loop
     let (a_n, b_n, c_n, d_n) = 
         (0..64).fold((*a0, *b0, *c0, *d0),
         |(a, b, c, d), i: usize| {
@@ -80,7 +77,7 @@ fn process_chunk(chunk: Option<Vec<u8>>, (a0, b0, c0, d0): &mut MdBuffer) {
                 _       => (c ^ (b | !d)        , (7*i) % 16    )
             };
 
-            let f = f.wrapping_add(a).wrapping_add(k(i)).wrapping_add(words[g]);
+            let f = f.wrapping_add(a).wrapping_add(K_TABLE[i]).wrapping_add(words[g]);
 
             (d, b.wrapping_add(f.rotate_left(s(i))), b, c)
         });
@@ -94,16 +91,13 @@ fn process_chunk(chunk: Option<Vec<u8>>, (a0, b0, c0, d0): &mut MdBuffer) {
 /// Returns the value in the s-table at index i
 fn s(i: usize) -> u32 { S_TABLE_REDUCED[4*(i/16) + i%4] as u32 }
 
-/// Returns the value in the k-table at index i
-fn k(i: usize) -> u32 { K_TABLE[i] }
-
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::test_digest;
 
     #[test]
-    fn correct_digests() {
+    fn md5_correct() {
         test_digest!(digest,
             ("", 
                 "d41d8cd98f00b204e9800998ecf8427e"),

@@ -87,6 +87,7 @@ pub fn digest(data: DataType, state_size: usize, out_len: usize) -> DigestResult
     }
 }
 
+/// Generalized SHA2 function for variants which use u32s (state size of 256).
 fn digest_32(data: DataType, init_buffer: [u32; 8]) -> DigestResult {
     let mut buf = init_buffer;
 
@@ -115,6 +116,7 @@ fn digest_32(data: DataType, init_buffer: [u32; 8]) -> DigestResult {
     Ok(out.concat())
 }
 
+/// Generalized SHA2 function for variants which use u64s (state size of 512).
 fn digest_64(data: DataType, init_buffer: [u64; 8]) -> DigestResult {
     let mut buf = init_buffer;
 
@@ -128,11 +130,9 @@ fn digest_64(data: DataType, init_buffer: [u64; 8]) -> DigestResult {
         len = len.wrapping_add((chunk_bytes.len() * 8) as u128);
         last_chunk = Some(chunk_bytes);
     }
-
-    // Default last_chunk to empty Vec if None
-    let last_chunk = last_chunk.unwrap_or_default();
-
+    
     // Process remaining padded chunk(s)
+    let last_chunk = last_chunk.unwrap_or_default();
     for chunk in md_length_padding_64(&last_chunk, len, Endianness::Big) {
         process_chunk_64(Some(chunk), &mut buf);
     }
@@ -227,6 +227,8 @@ fn process_chunk_64(chunk: Option<Vec<u8>>, buffer: &mut [u64; 8]) {
 mod test {
     use super::*;
     use crate::test_digest;
+    
+    // Helper functions
 
     fn sha_224(data: DataType) -> DigestResult { digest(data, 256, 224) }
     fn sha_256(data: DataType) -> DigestResult { digest(data, 256, 256) }
@@ -236,7 +238,7 @@ mod test {
     fn sha_512_256(data: DataType) -> DigestResult { digest(data, 512, 256) }
 
     #[test]
-    fn correct_sha224_digests() {
+    fn sha224_correct() {
         test_digest!(sha_224,
             ("", 
                 "d14a028c2a3a2bc9476102bb288234c415a2b01f828ea62ac5b3e42f"),
@@ -248,7 +250,7 @@ mod test {
     }
 
     #[test]
-    fn correct_sha256_digests() {
+    fn sha256_correct() {
         test_digest!(sha_256,
             ("", 
                 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"),
@@ -260,7 +262,7 @@ mod test {
     }
 
     #[test]
-    fn correct_sha384_digests() {
+    fn sha384_correct() {
         test_digest!(sha_384,
             ("", 
                 "38b060a751ac96384cd9327eb1b1e36a21fdb71114be07434c0cc7bf63f6e1da274edebfe76f65fbd51ad2f14898b95b"),
@@ -272,7 +274,7 @@ mod test {
     }
 
     #[test]
-    fn correct_sha512_digests() {
+    fn sha512_correct() {
         test_digest!(sha_512,
             ("", 
                 "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e"),
@@ -284,7 +286,7 @@ mod test {
     }
 
     #[test]
-    fn correct_sha512_224_digests() {
+    fn sha512_224_correct() {
         test_digest!(sha_512_224,
             ("", 
                 "6ed0dd02806fa89e25de060c19d3ac86cabb87d6a0ddd05c333b84f4"),
@@ -296,7 +298,7 @@ mod test {
     }
 
     #[test]
-    fn correct_sha512_256_digests() {
+    fn sha512_256_correct() {
         test_digest!(sha_512_256,
             ("", 
                 "c672b8d1ef56ed28ab87c3622c5114069bdd3ad7b8f9737498d0c01ecef0967a"),

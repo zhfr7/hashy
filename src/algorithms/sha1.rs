@@ -9,6 +9,8 @@ const CHUNK_SIZE: usize = 64;
 const INIT_BUFFER: Buffer = 
     (0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0);
 
+/// Generates a SHA1 digest from the given DataType
+/// and returns a DigestResult.
 pub fn digest(data: DataType) -> DigestResult {
     let mut buf = INIT_BUFFER;
 
@@ -22,11 +24,9 @@ pub fn digest(data: DataType) -> DigestResult {
         len = len.wrapping_add((chunk_bytes.len() * 8) as u64);
         last_chunk = Some(chunk_bytes);
     }
-
-    // Default last_chunk to an empty Vec if None
-    let last_chunk = last_chunk.unwrap_or_default();
-
+    
     // Process remaining chunks
+    let last_chunk = last_chunk.unwrap_or_default();
     for chunk in md_length_padding(&last_chunk, len, Endianness::Big) {
         process_chunk(Some(chunk), &mut buf);
     }
@@ -40,6 +40,8 @@ pub fn digest(data: DataType) -> DigestResult {
         h4.to_be_bytes()].concat())
 }
 
+/// Processes each chunk according to the SHA1 spec. 
+/// Ignores chunk if it is None.
 fn process_chunk(chunk: Option<Vec<u8>>, (h0, h1, h2, h3, h4): &mut Buffer) {
     if chunk.is_none() { return }
 
@@ -80,7 +82,7 @@ mod test {
     use crate::test_digest;
 
     #[test]
-    fn correct_digests() {
+    fn sha1_correct() {
         test_digest!(digest,
             ("", 
                 "da39a3ee5e6b4b0d3255bfef95601890afd80709"),

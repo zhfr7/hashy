@@ -13,6 +13,8 @@ const S_TABLE_REDUCED: [u8; 12] = [
     3, 9, 11, 15
 ];
 
+/// Generates an MD4 digest from the given DataType
+/// and returns it as a DigestResult.
 pub fn digest(data: DataType) -> DigestResult {
     let mut md_buf = INIT_MD_BUFFER;
 
@@ -26,11 +28,9 @@ pub fn digest(data: DataType) -> DigestResult {
         len = len.wrapping_add((chunk_bytes.len() * 8) as u64);
         last_chunk = Some(chunk_bytes);
     }
-
-    // Default last chunk to an empty Vec
-    let last_chunk = last_chunk.unwrap_or_default();
-
+    
     // Process last padded chunk(s)
+    let last_chunk = last_chunk.unwrap_or_default();
     for chunk in md_length_padding(&last_chunk, len, Endianness::Little) {
         process_chunk(Some(chunk), &mut md_buf);
     }
@@ -42,6 +42,8 @@ pub fn digest(data: DataType) -> DigestResult {
         d.to_le_bytes()].concat())
 }
 
+/// Process each chunk according to the MD4 spec and 
+/// mutates the MdBuffer. Ignores chunk if it is None.
 fn process_chunk(chunk: Option<Vec<u8>>, (a0, b0, c0, d0): &mut MdBuffer) {
     if chunk.is_none() { return }
 
@@ -71,6 +73,8 @@ fn process_chunk(chunk: Option<Vec<u8>>, (a0, b0, c0, d0): &mut MdBuffer) {
     *d0 = d0.wrapping_add(d_n);
 }
 
+// Constants
+
 fn k(i: usize) -> usize {
     let i_norm = i % 16;
     match i {
@@ -91,7 +95,7 @@ mod test {
     use crate::test_digest;
 
     #[test]
-    fn correct_digests() {
+    fn md4_correct() {
         test_digest!(digest,
             ("", 
                 "31d6cfe0d16ae931b73c59d7e0c089c0"),

@@ -4,8 +4,8 @@ use crate::data_container::DataType;
 use super::helpers::DigestResult;
 use super::keccak::keccak;
 
-/// Returns a DigestResult of a SHA3-[out_len] algorithm,
-/// where out_len = intended output length in bits.
+/// Generates a digest for the SHA3-\[out_len\] algorithm variant,
+/// where out_len is the intended output size in bits.
 /// 
 /// out_len is constrained to 224, 256, 384, 512. Other values
 /// would result in an Err(...).
@@ -16,10 +16,14 @@ pub fn digest(data: DataType, out_len: usize) -> DigestResult {
     keccak(1600 - 2*out_len, data, 0x06, out_len)
 }
 
+/// Generates a SHAKE-128 digest from the data and the intended
+/// output size in bits (out_len).
 pub fn digest_shake_128(data: DataType, out_len: usize) -> DigestResult {
     keccak(1344, data, 0x1F, out_len)
 }
 
+/// Generates a SHAKE-256 digest from the data and the intended
+/// output size in bits (out_len).
 pub fn digest_shake_256(data: DataType, out_len: usize) -> DigestResult {
     keccak(1088, data, 0x1F, out_len)
 }
@@ -28,6 +32,8 @@ pub fn digest_shake_256(data: DataType, out_len: usize) -> DigestResult {
 mod test {
     use super::*;
     use crate::test_digest;
+
+    // Helper functions
 
     fn sha3_224(data: DataType) -> DigestResult { digest(data, 224) }
     fn sha3_256(data: DataType) -> DigestResult { digest(data, 256) }

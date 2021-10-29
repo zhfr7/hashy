@@ -61,7 +61,7 @@ mod step_mapping_funs {
 }
 
 /// Represents the Keccak\[r, c\] sponge function, but with c omitted.
-/// r + c is assumed to be 1600.
+/// r + c is assumed to be 1600. Each lane in the state would be a u64.
 /// 
 /// # Arguments
 /// 

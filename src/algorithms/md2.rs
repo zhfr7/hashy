@@ -23,12 +23,15 @@ const S_TABLE: [u8; 256] = [
     0x31, 0x44, 0x50, 0xB4, 0x8F, 0xED, 0x1F, 0x1A, 0xDB, 0x99, 0x8D, 0x33, 0x9F, 0x11, 0x83, 0x14
 ];
 
+/// Stores the state during digestion
 struct MD2State {
     md_buffer: [u8; 48],
     checksum: [u8; 16],
     l: u8
 }
 
+/// Generates an MD2 digest from the given DataType, 
+/// returns a DigestResult.
 pub fn digest(data: DataType) -> DigestResult {
     let mut state = MD2State {
         md_buffer: [0; 48],
@@ -58,6 +61,8 @@ pub fn digest(data: DataType) -> DigestResult {
     Ok(state.md_buffer[0..16].to_vec())
 }
 
+/// Processes each chunk according to the MD2 spec,
+/// ignores chunk if it is None.
 fn process_chunk(chunk: Option<Vec<u8>>, state: &mut MD2State) {
     if chunk.is_none() { return; }
     let chunk = chunk.unwrap();
@@ -83,11 +88,13 @@ fn process_chunk(chunk: Option<Vec<u8>>, state: &mut MD2State) {
     }
 }
 
+/// Returns a padded last_chunk according to the MD2 spec.
 fn pad_md2(last_chunk: Vec<u8>) -> Vec<u8> {
     let byte_value: usize = 16 - last_chunk.len() % 16;
-
-    [last_chunk, vec![byte_value as u8; byte_value]]
-    .concat()
+    
+    let mut out = last_chunk;
+    for _ in 0..byte_value { out.push(byte_value as u8) }
+    out
 }
 
 fn s(i: u8) -> u8 { S_TABLE[i as usize] }
@@ -98,7 +105,7 @@ mod test {
     use crate::test_digest;
 
     #[test]
-    fn correct_digests() {
+    fn md2_correct() {
         test_digest!(digest,
             ("",
                 "8350e5a3e24c153df2275c9f80692773"),
