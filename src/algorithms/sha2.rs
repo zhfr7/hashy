@@ -3,7 +3,7 @@
 // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
 
 use anyhow::anyhow;
-use crate::DataType;
+use crate::chunked_stream::ChunkedStream;
 use super::helpers::*;
 
 const CHUNK_SIZE_256: usize = 64;
@@ -74,7 +74,7 @@ const K_TABLE_512: [u64; 80] = [
 /// (out_len specified in the variant name), other combinations would return an Err(...):
 /// * state_size = 256 : SHA-224 and -256,
 /// * state_size = 512 : SHA-384, -512, -512-224, -512-256
-pub fn digest(data: DataType, state_size: usize, out_len: usize) -> DigestResult {
+pub fn digest(data: ChunkedStream, state_size: usize, out_len: usize) -> DigestResult {
     match (state_size, out_len) {
         (256, 224) => Ok(digest_32(data, INIT_BUFFER_224)?[..28].to_vec()),
         (256, 256) => digest_32(data, INIT_BUFFER_256), 
@@ -88,7 +88,7 @@ pub fn digest(data: DataType, state_size: usize, out_len: usize) -> DigestResult
 }
 
 /// Generalized SHA2 function for variants which use u32s (state size of 256).
-fn digest_32(data: DataType, init_buffer: [u32; 8]) -> DigestResult {
+fn digest_32(data: ChunkedStream, init_buffer: [u32; 8]) -> DigestResult {
     let mut buf = init_buffer;
 
     // Process each chunk via last_chunk
@@ -117,7 +117,7 @@ fn digest_32(data: DataType, init_buffer: [u32; 8]) -> DigestResult {
 }
 
 /// Generalized SHA2 function for variants which use u64s (state size of 512).
-fn digest_64(data: DataType, init_buffer: [u64; 8]) -> DigestResult {
+fn digest_64(data: ChunkedStream, init_buffer: [u64; 8]) -> DigestResult {
     let mut buf = init_buffer;
 
     // Process each chunk via last_chunk
@@ -230,12 +230,12 @@ mod test {
     
     // Helper functions
 
-    fn sha_224(data: DataType) -> DigestResult { digest(data, 256, 224) }
-    fn sha_256(data: DataType) -> DigestResult { digest(data, 256, 256) }
-    fn sha_384(data: DataType) -> DigestResult { digest(data, 512, 384) }
-    fn sha_512(data: DataType) -> DigestResult { digest(data, 512, 512) }
-    fn sha_512_224(data: DataType) -> DigestResult { digest(data, 512, 224) }
-    fn sha_512_256(data: DataType) -> DigestResult { digest(data, 512, 256) }
+    fn sha_224(data: ChunkedStream) -> DigestResult { digest(data, 256, 224) }
+    fn sha_256(data: ChunkedStream) -> DigestResult { digest(data, 256, 256) }
+    fn sha_384(data: ChunkedStream) -> DigestResult { digest(data, 512, 384) }
+    fn sha_512(data: ChunkedStream) -> DigestResult { digest(data, 512, 512) }
+    fn sha_512_224(data: ChunkedStream) -> DigestResult { digest(data, 512, 224) }
+    fn sha_512_256(data: ChunkedStream) -> DigestResult { digest(data, 512, 256) }
 
     #[test]
     fn sha224_correct() {

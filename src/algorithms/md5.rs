@@ -1,6 +1,6 @@
 // Reference: https://en.wikipedia.org/wiki/MD5
 
-use crate::data_container::DataType;
+use crate::chunked_stream::ChunkedStream;
 use super::helpers::*;
 
 type MdBuffer = (u32, u32, u32, u32);
@@ -29,7 +29,7 @@ const K_TABLE: [u32; CHUNK_SIZE] = [
 
 /// Generates an MD5 digest from the given DataType
 /// and returns it as a DigestResult.
-pub fn digest(data: DataType) -> DigestResult {
+pub fn digest(data: ChunkedStream) -> DigestResult {
     // Initial MD buffer
     let mut md_buf = INIT_MD_BUFFER;
 

@@ -1,6 +1,6 @@
 // Reference: https://en.wikipedia.org/wiki/SHA-1
 
-use crate::data_container::DataType;
+use crate::chunked_stream::ChunkedStream;
 use super::helpers::*;
 
 type Buffer = (u32, u32, u32, u32, u32);
@@ -11,7 +11,7 @@ const INIT_BUFFER: Buffer =
 
 /// Generates a SHA1 digest from the given DataType
 /// and returns a DigestResult.
-pub fn digest(data: DataType) -> DigestResult {
+pub fn digest(data: ChunkedStream) -> DigestResult {
     let mut buf = INIT_BUFFER;
 
     // Process each chunk via last_chunk

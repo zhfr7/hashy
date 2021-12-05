@@ -1,16 +1,17 @@
-use std::{fs::File, io::{self, BufReader, Read}};
+use std::fs::File;
+use std::io::{self, BufReader, Read};
 
-pub enum DataType {
+pub enum ChunkedStream {
     Bytes(Vec<u8>),
     File(BufReader<File>)
 }
 
 pub struct ChunkedIter {
-    data: DataType,
+    data: ChunkedStream,
     chunk_size: usize
 }
 
-impl DataType {
+impl ChunkedStream {
     pub fn into_iter(self, chunk_size: usize) -> ChunkedIter {
         ChunkedIter {
             data: self,
@@ -24,7 +25,7 @@ impl Iterator for ChunkedIter {
 
     fn next(&mut self) -> Option<Self::Item> {
         match &mut self.data {
-            DataType::Bytes(bytes) => 
+            ChunkedStream::Bytes(bytes) => 
             {
                 if bytes.is_empty() {
                     None
@@ -35,7 +36,7 @@ impl Iterator for ChunkedIter {
                 }
             },
 
-            DataType::File(reader) => 
+            ChunkedStream::File(reader) => 
             {
                 let mut chunk = Vec::with_capacity(self.chunk_size);
 
@@ -54,11 +55,11 @@ impl Iterator for ChunkedIter {
 mod test {
     use std::io::BufReader;
 
-    use super::DataType;
+    use super::ChunkedStream;
 
     #[test]
     fn chunk_iterate_bytes() {
-        let data = DataType::Bytes("Example message".as_bytes().into());
+        let data = ChunkedStream::Bytes("Example message".as_bytes().into());
         let expected = vec![
             vec![69, 120, 97, 109],
             vec![112, 108, 101, 32],
@@ -84,7 +85,7 @@ mod test {
         write!(tmpfile, "Example message in file").unwrap();
         tmpfile.seek(SeekFrom::Start(0)).unwrap();
 
-        let data = DataType::File(BufReader::new(tmpfile));
+        let data = ChunkedStream::File(BufReader::new(tmpfile));
         let expected = vec![
             vec![69, 120, 97, 109, 112],
             vec![108, 101, 32, 109, 101],

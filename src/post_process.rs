@@ -15,7 +15,7 @@ impl Encoding {
         match enc_lower.as_str() {
             "hex"       => Ok(Encoding::Hex(false)),
             "hex_upper" => Ok(Encoding::Hex(true)),
-            "base64"       => Ok(Encoding::Base64),
+            "base64"    => Ok(Encoding::Base64),
             "bin"       => Ok(Encoding::Binary),
             _           => Err(format!("Unknown encoding type: {}", enc_lower))
         }

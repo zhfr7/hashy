@@ -1,6 +1,6 @@
 // Reference: https://www.rfc-editor.org/info/rfc1319 (refer errata for correction)
 
-use crate::data_container::DataType;
+use crate::chunked_stream::ChunkedStream;
 use super::helpers::DigestResult;
 
 const CHUNK_SIZE: usize = 16;
@@ -32,7 +32,7 @@ struct MD2State {
 
 /// Generates an MD2 digest from the given DataType, 
 /// returns a DigestResult.
-pub fn digest(data: DataType) -> DigestResult {
+pub fn digest(data: ChunkedStream) -> DigestResult {
     let mut state = MD2State {
         md_buffer: [0; 48],
         checksum: [0; 16],
