@@ -1,5 +1,5 @@
 use std::fs::File; 
-use std::io::BufReader;
+use std::io::{BufReader, Write};
 use std::path::PathBuf;
 
 use crate::algorithms::Algorithm;
@@ -39,11 +39,11 @@ pub struct Opts {
 impl Opts {
     /// Processes the Opts struct (consumes it) and prints the result
     /// of the digest to stdout
-    pub fn process(self) -> anyhow::Result<()> {
+    pub fn process(&self) -> anyhow::Result<()> {
         if self.list {
-            print_list();
+            self.write_to_output(algo_list())
         }
-        else if let (Some(algorithm), Some(input)) = (self.algorithm, self.input) {
+        else if let (Some(algorithm), Some(input)) = (&self.algorithm, &self.input) {
             let data = 
             if self.file {
                 let file = File::open(input)?;
@@ -51,17 +51,31 @@ impl Opts {
             }
             else { ChunkedStream::Bytes(input.as_bytes().to_owned()) };
 
-            let digest_bytes = crate::router::digest_from_algorithm(data, algorithm)?;
-            let digest_encoded = crate::post_process::encode(digest_bytes, self.encoding);
+            let digest_bytes = crate::router::digest_from_algorithm(data, &algorithm)?;
+            let digest_encoded = self.encoding.encode(digest_bytes);
 
-            println!("{}", digest_encoded);
+            self.write_to_output(digest_encoded)
+        }
+        else {
+            Err(anyhow::anyhow!("Opts are unhandled! Please refer to the developers."))
+        }
+    }
+
+    // Write to filepath desired by the output field (stdout if None)
+    fn write_to_output(&self, msg: String) -> anyhow::Result<()> {
+        match &self.output {
+            Some(path) => {
+                let mut out = File::create(path)?;
+                writeln!(out, "{}", msg)?;
+            },
+            None => println!("{}", msg)
         }
 
         Ok(())
     }
 }
 
-fn print_list() {
+fn algo_list() -> String {
     let mut list = String::new();
     let mut count = 0;
     for algo in crate::algorithms::ALGORITHMS.iter() {
@@ -80,6 +94,8 @@ fn print_list() {
         }
     }
 
-    println!("Algorithm count: {}", count);
-    println!("{}", list);
+    // Remove last newline
+    list.pop(); 
+
+    format!("Algorithm count: {}\n{}", count, list)
 }

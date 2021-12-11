@@ -1,7 +1,7 @@
 use crate::algorithms::*;
 use crate::chunked_stream::ChunkedStream;
 
-pub fn digest_from_algorithm(data: ChunkedStream, algorithm: String) -> Result<Vec<u8>, anyhow::Error> {
+pub fn digest_from_algorithm(data: ChunkedStream, algorithm: &String) -> Result<Vec<u8>, anyhow::Error> {
     let algo_lower = algorithm.to_lowercase();
     let algo_specs: Vec<&str> = algo_lower.split('-').collect();
 

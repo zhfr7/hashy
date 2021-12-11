@@ -20,35 +20,33 @@ impl Encoding {
             _           => Err(format!("Unknown encoding type: {}", enc_lower))
         }
     }
-}
 
-/// Encodes the given bytes according to the encoding type given
-pub fn encode(bytes: Vec<u8>, encoding: Encoding) -> String {
-    match encoding {
-        Encoding::Hex(false)    => hex::encode(bytes),
-        Encoding::Hex(true)     => hex::encode_upper(bytes),
-        Encoding::Base64        => base64::encode(bytes),
-        Encoding::Binary        => encode_binary(bytes)
-    }
-}
+    /// Encodes the given bytes according to the encoding type given
+    pub fn encode(&self, bytes: Vec<u8>) -> String {
+        match self {
+            Encoding::Hex(false)    => hex::encode(bytes),
+            Encoding::Hex(true)     => hex::encode_upper(bytes),
+            Encoding::Base64        => base64::encode(bytes),
+            Encoding::Binary        => {
+                bytes.into_iter()
+                .map(|byte| {
+                    let mut cur_value = byte;
+                    let mut cur_bitstring = String::new();
 
-fn encode_binary(bytes: Vec<u8>) -> String {
-    bytes.into_iter()
-    .map(|byte| {
-        let mut cur_value = byte;
-        let mut cur_bitstring = String::new();
+                    for _ in 0..8 {
+                        cur_bitstring.insert(0, 
+                            if cur_value % 2 == 0 { '0' } else { '1' });
 
-        for _ in 0..8 {
-            cur_bitstring.insert(0, 
-                if cur_value % 2 == 0 { '0' } else { '1' });
+                        cur_value /= 2;
+                    }
 
-            cur_value /= 2;
+                    cur_bitstring
+                })
+                .collect::<Vec<String>>()
+                .join("")
+            }
         }
-
-        cur_bitstring
-    })
-    .collect::<Vec<String>>()
-    .join("")
+    }
 }
 
 #[cfg(test)]
@@ -57,29 +55,29 @@ mod test {
 
     #[test]
     fn encode_hex() {
-        assert_eq!(encode(vec![], Encoding::Hex(false)), 
+        assert_eq!(Encoding::Hex(false).encode(vec![]), 
             "".to_string());
-        assert_eq!(encode(vec![1, 2, 3, 25, 26, 129], Encoding::Hex(false)), 
+        assert_eq!(Encoding::Hex(false).encode(vec![1, 2, 3, 25, 26, 129]), 
             "010203191a81".to_string());
-        assert_eq!(encode(vec![1, 2, 3, 25, 26, 129], Encoding::Hex(true)), 
+        assert_eq!(Encoding::Hex(true).encode(vec![1, 2, 3, 25, 26, 129]), 
             "010203191A81".to_string());
     }
 
     #[test]
     fn encode_base64() {
-        assert_eq!(encode(vec![], Encoding::Base64), 
+        assert_eq!(Encoding::Base64.encode(vec![]), 
             "".to_string());
-        assert_eq!(encode(vec![1, 2, 3, 25, 26, 129], Encoding::Base64), 
+        assert_eq!(Encoding::Base64.encode(vec![1, 2, 3, 25, 26, 129]), 
             "AQIDGRqB".to_string());
-        assert_eq!(encode(vec![1, 2, 3, 25, 26, 129, 130], Encoding::Base64), 
+        assert_eq!(Encoding::Base64.encode(vec![1, 2, 3, 25, 26, 129, 130]), 
             "AQIDGRqBgg==".to_string());
     }
     
     #[test]
     fn encode_binary() {
-        assert_eq!(encode(vec![], Encoding::Binary),
+        assert_eq!(Encoding::Binary.encode(vec![]),
             "".to_string());
-        assert_eq!(encode(vec![197, 209, 3], Encoding::Binary), 
+        assert_eq!(Encoding::Binary.encode(vec![197, 209, 3]), 
             "110001011101000100000011".to_string());
     }
 }
