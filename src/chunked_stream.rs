@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{self, BufReader, Read};
+use std::io::{Result, BufReader, Read};
 
 pub enum ChunkedStream {
     Bytes(Vec<u8>),
@@ -12,16 +12,26 @@ pub struct ChunkedIter {
 }
 
 impl ChunkedStream {
+    pub fn from_string(input: &String) -> Self {
+        let bytes = input.as_bytes().to_vec();
+        ChunkedStream::Bytes(bytes)
+    }
+
+    pub fn from_file(filepath: &String) -> Result<Self> {
+        let file = File::open(filepath)?;
+        Ok(ChunkedStream::File(BufReader::new(file)))
+    }
+
     pub fn into_iter(self, chunk_size: usize) -> ChunkedIter {
         ChunkedIter {
             data: self,
             chunk_size,
-        } 
+        }
     }
 }
 
 impl Iterator for ChunkedIter {
-    type Item = io::Result<Vec<u8>>;
+    type Item = Result<Vec<u8>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match &mut self.data {

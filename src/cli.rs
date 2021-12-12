@@ -1,5 +1,5 @@
 use std::fs::File; 
-use std::io::{BufReader, Write};
+use std::io::Write;
 use std::path::PathBuf;
 
 use crate::algorithms::Algorithm;
@@ -45,13 +45,10 @@ impl Opts {
         }
         else if let (Some(algorithm), Some(input)) = (&self.algorithm, &self.input) {
             let data = 
-            if self.file {
-                let file = File::open(input)?;
-                ChunkedStream::File(BufReader::new(file))
-            }
-            else { ChunkedStream::Bytes(input.as_bytes().to_owned()) };
+            if self.file    { ChunkedStream::from_file(input)? }
+            else            { ChunkedStream::from_string(input) };
 
-            let digest_bytes = crate::router::digest_from_algorithm(data, &algorithm)?;
+            let digest_bytes = crate::router::digest_from(data, &algorithm)?;
             let digest_encoded = self.encoding.encode(digest_bytes);
 
             self.write_to_output(digest_encoded)
