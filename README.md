@@ -1,6 +1,7 @@
 # hashy
 
-Hashy is a CLI application made entirely with Rust with a library of hashing algorithms like MD5, SHA-2 and SHAKE. This is just a small project for me so don't expect all of it to be perfectly memory safe or performant.
+Hashy is a CLI application made entirely with Rust with a library of hashing algorithms like MD5, SHA-2 and SHAKE.\
+This is just a small project for me so don't expect all of it to be perfectly memory safe or performant.
 
 - [hashy](#hashy)
   - [Usage](#usage)
@@ -38,20 +39,22 @@ Hashy is a CLI application made entirely with Rust with a library of hashing alg
 
 `hashy md5 "The quick brown fox jumps over the lazy dog"`
 
-Certain algorithms like SHAKE require a length as a parameter. This is done by
-appending the output length in bits to the end of the algorithm name separated by
+Certain algorithms like SHAKE require a length as a parameter.\
+This is done by appending the output length in bits to the end of the algorithm name separated by
 a dash. e.g:
 
 `hashy shake128-72 "The quick brown fox jumps over the lazy dog"`
 
-would produce a SHAKE128 hash with length 72/8 = 9 bytes. However, if a number
-not divisible by 8 is given, it would result in an error.
+would produce a SHAKE128 hash with length 72/8 = 9 bytes.\
+However, if a number not divisible by 8 is given, it would result in an error.
 
 ## Binary
 
 You need to install rust and cargo to compile this project. [See here](https://www.rust-lang.org/tools/install).
 
-After running `cargo build` from the root project folder, the binary can be found under `target/debug` as `hashy`. Alternatively, you can use `cargo run -- [args]`. For the performance-optimized version, use `cargo build --release`, this would speed up the processing time by a lot, but would still be slower than existing solutions like `sha256sum` on Linux.
+After running `cargo build` from the root project folder, the binary can be found under `target/debug` as `hashy`. Alternatively, you can use `cargo run -- [args]`. 
+
+For the performance-optimized version, use `cargo build --release`, this would speed up the processing time by a lot, but would still be slower than existing solutions like `sha256sum` on Linux.
 
 ## Algorithms
 
