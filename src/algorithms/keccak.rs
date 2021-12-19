@@ -2,7 +2,7 @@
 // - https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
 // - https://keccak.team/keccak_specs_summary.html
 
-use crate::data_container::DataType;
+use crate::chunked_stream::ChunkedStream;
 use super::helpers::{DigestResult, Endianness, exact_64_bit_words};
 
 type KState = [u8; 200];
@@ -69,7 +69,7 @@ mod step_mapping_funs {
 /// * `data` - the DataType struct which holds the input data
 /// * `d_suffix` - delimited suffix byte, unique to certain hash functions
 /// * `out_len` - intended number of output bits (has to be multiple of 8)
-pub fn keccak(r: usize, data: DataType, d_suffix: u8, out_len: usize)
+pub fn keccak(r: usize, data: ChunkedStream, d_suffix: u8, out_len: usize)
     -> DigestResult {
     if r % 8 != 0 { return Err(anyhow::anyhow!(
         "impl error (keccak) - r must be a multiple of 8")) }
@@ -189,7 +189,7 @@ fn lanes_to_state(lanes: KLanes) -> KState {
 mod test {
     use super::*;
     use super::keccak;
-    use crate::DataType;
+    use crate::chunked_stream::ChunkedStream;
     use crate::test_digest;
 
     #[test]
@@ -392,7 +392,7 @@ mod test {
         assert_eq!(0xb7db673642034e6b, lanes[0][0]);
     }
 
-    fn sha3_224_test(data: DataType) -> DigestResult {
+    fn sha3_224_test(data: ChunkedStream) -> DigestResult {
         keccak(1152, data, 0x06, 224)
     }
 

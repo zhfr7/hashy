@@ -1,6 +1,6 @@
 // Reference: https://keccak.team/keccak_specs_summary.html
 
-use crate::data_container::DataType;
+use crate::chunked_stream::ChunkedStream;
 use super::helpers::DigestResult;
 use super::keccak::keccak;
 
@@ -9,7 +9,7 @@ use super::keccak::keccak;
 /// 
 /// out_len is constrained to 224, 256, 384, 512. Other values
 /// would result in an Err(...).
-pub fn digest(data: DataType, out_len: usize) -> DigestResult {
+pub fn digest(data: ChunkedStream, out_len: usize) -> DigestResult {
     if ![224, 256, 384, 512].contains(&out_len) { 
         return Err(anyhow::anyhow!("Impl error: invalid output size")); }
     
@@ -18,13 +18,13 @@ pub fn digest(data: DataType, out_len: usize) -> DigestResult {
 
 /// Generates a SHAKE-128 digest from the data and the intended
 /// output size in bits (out_len).
-pub fn digest_shake_128(data: DataType, out_len: usize) -> DigestResult {
+pub fn digest_shake_128(data: ChunkedStream, out_len: usize) -> DigestResult {
     keccak(1344, data, 0x1F, out_len)
 }
 
 /// Generates a SHAKE-256 digest from the data and the intended
 /// output size in bits (out_len).
-pub fn digest_shake_256(data: DataType, out_len: usize) -> DigestResult {
+pub fn digest_shake_256(data: ChunkedStream, out_len: usize) -> DigestResult {
     keccak(1088, data, 0x1F, out_len)
 }
 
@@ -35,10 +35,10 @@ mod test {
 
     // Helper functions
 
-    fn sha3_224(data: DataType) -> DigestResult { digest(data, 224) }
-    fn sha3_256(data: DataType) -> DigestResult { digest(data, 256) }
-    fn sha3_384(data: DataType) -> DigestResult { digest(data, 384) }
-    fn sha3_512(data: DataType) -> DigestResult { digest(data, 512) }
+    fn sha3_224(data: ChunkedStream) -> DigestResult { digest(data, 224) }
+    fn sha3_256(data: ChunkedStream) -> DigestResult { digest(data, 256) }
+    fn sha3_384(data: ChunkedStream) -> DigestResult { digest(data, 384) }
+    fn sha3_512(data: ChunkedStream) -> DigestResult { digest(data, 512) }
 
     #[test]
     fn sha3_224_correct() {
@@ -92,11 +92,11 @@ mod test {
         );
     }
 
-    fn shake_128_helper_1(data: DataType) -> DigestResult { digest_shake_128(data, 64) }
-    fn shake_128_helper_2(data: DataType) -> DigestResult { digest_shake_128(data, 184) }
+    fn shake_128_helper_1(data: ChunkedStream) -> DigestResult { digest_shake_128(data, 64) }
+    fn shake_128_helper_2(data: ChunkedStream) -> DigestResult { digest_shake_128(data, 184) }
     
-    fn shake_256_helper_1(data: DataType) -> DigestResult { digest_shake_256(data, 72) }
-    fn shake_256_helper_2(data: DataType) -> DigestResult { digest_shake_256(data, 240) }
+    fn shake_256_helper_1(data: ChunkedStream) -> DigestResult { digest_shake_256(data, 72) }
+    fn shake_256_helper_2(data: ChunkedStream) -> DigestResult { digest_shake_256(data, 240) }
 
     #[test]
     fn shake_128_correct() {
@@ -121,7 +121,7 @@ mod test {
 
     #[test]
     fn shake_128_invalid_param() {
-        let data = DataType::Bytes("".as_bytes().to_vec());
+        let data = ChunkedStream::Bytes("".as_bytes().to_vec());
         let result = digest_shake_128(data, 183);
         assert!(result.is_err());
     }
@@ -149,7 +149,7 @@ mod test {
 
     #[test]
     fn shake_256_invalid_param() {
-        let data = DataType::Bytes("".as_bytes().to_vec());
+        let data = ChunkedStream::Bytes("".as_bytes().to_vec());
         let result = digest_shake_256(data, 201);
         assert!(result.is_err());
     }

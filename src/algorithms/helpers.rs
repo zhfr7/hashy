@@ -100,11 +100,11 @@ macro_rules! test_digest {
     ($digest_fun:expr, $( $io_pair:expr ), *) => {
         $(
             let (input, expected) = $io_pair;
-            let data = crate::DataType::Bytes(input.as_bytes().to_vec());
+            let data = crate::chunked_stream::ChunkedStream::Bytes(input.as_bytes().to_vec());
             let digest_bytes = $digest_fun(data).unwrap();
 
-            assert_eq!(*expected, crate::post_process::encode(digest_bytes, 
-                crate::post_process::Encoding::Hex(false)));
+            assert_eq!(*expected,
+                crate::post_process::Encoding::Hex(false).encode(digest_bytes));
         )*
     };
 }

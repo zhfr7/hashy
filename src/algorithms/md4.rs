@@ -1,6 +1,6 @@
 // Reference: https://datatracker.ietf.org/doc/html/rfc1320
 
-use crate::data_container::DataType;
+use crate::chunked_stream::ChunkedStream;
 use super::helpers::*;
 
 type MdBuffer = (u32, u32, u32, u32);
@@ -15,7 +15,7 @@ const S_TABLE_REDUCED: [u8; 12] = [
 
 /// Generates an MD4 digest from the given DataType
 /// and returns it as a DigestResult.
-pub fn digest(data: DataType) -> DigestResult {
+pub fn digest(data: ChunkedStream) -> DigestResult {
     let mut md_buf = INIT_MD_BUFFER;
 
     // Process each chunk via last_chunk

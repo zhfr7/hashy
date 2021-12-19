@@ -1,11 +1,15 @@
 # hashy
 
-Hashy is a CLI application made entirely with Rust with a library of hashing algorithms like MD5, SHA-2 and SHAKE. This is just a small project for me so don't expect all of it to be perfectly memory safe or performant.
+Hashy is a CLI application made entirely with Rust with a library of hashing algorithms like MD5, SHA-2 and SHAKE.\
+This is just a small project for me so don't expect all of it to be perfectly memory safe or performant.
 
 - [hashy](#hashy)
   - [Usage](#usage)
+    - [Args](#args)
+    - [Flags](#flags)
+    - [Options](#options)
     - [Examples](#examples)
-    - [Binary](#binary)
+  - [Binary](#binary)
   - [Algorithms](#algorithms)
   - [Planned algorithms](#planned-algorithms)
 
@@ -13,33 +17,44 @@ Hashy is a CLI application made entirely with Rust with a library of hashing alg
 
 ## Usage
 
-`hashy -a <algorithm> [-f] [-e <encoding>] <input>`
+`hashy [FLAGS] [OPTIONS] <algorithm> <input>`
 
+### Args
 - `algorithm` - algorithm name in kebab case (example: sha-512-224).
-- `-f` flag - input is treated as a filepath if specified.
-- `-e` option - encoding type for output hash. Can be one of the following:
+- `input` - input message/filepath, for empty use `""`.
+
+### Flags
+- `-f (--file)` - input is treated as a filepath if specified.
+- `-l (--list)` - lists all the supported algorithms.
+
+### Options
+- `-e (--encoding)` - encoding type for output hash.
   - `hex` (default)
   - `hex_upper` - uppercase hexadecimal
   - `base64`
   - `bin` - binary
-- `input` - input message/filepath, for empty use `""`.
+- `-o (--output)` - output file to write program output to (default: stdout)
 
 ### Examples
 
-`hashy -a md5 "The quick brown fox jumps over the lazy dog"`
+`hashy md5 "The quick brown fox jumps over the lazy dog"`
 
-Certain algorithms like SHAKE require a length as a parameter. This is done by
-appending the output length in bits to the end of the algorithm name separated by
+Certain algorithms like SHAKE require a length as a parameter.\
+This is done by appending the output length in bits to the end of the algorithm name separated by
 a dash. e.g:
 
-`hashy -a shake128-72 "The quick brown fox jumps over the lazy dog"`
+`hashy shake128-72 "The quick brown fox jumps over the lazy dog"`
 
-would produce a SHAKE128 hash with length 72/8 = 9 bytes. However, if a number
-not divisible by 8 is given, it would result in an error.
+would produce a SHAKE128 hash with length 72/8 = 9 bytes.\
+However, if a number not divisible by 8 is given, it would result in an error.
 
-### Binary
+## Binary
 
-After running `cargo build` from the root project folder, the binary can be found under `target/debug` as `hashy`. Alternatively, you can use `cargo run -- [args]`. For the performance-optimized version, use `cargo build --release`, this would speed up the processing time by a lot, but would still be slower than existing solutions like `sha256sum` on Linux.
+You need to install rust and cargo to compile this project. [See here](https://www.rust-lang.org/tools/install).
+
+After running `cargo build` from the root project folder, the binary can be found under `target/debug` as `hashy`. Alternatively, you can use `cargo run -- [args]`. 
+
+For the performance-optimized version, use `cargo build --release`, this would speed up the processing time by a lot, but would still be slower than existing solutions like `sha256sum` on Linux.
 
 ## Algorithms
 

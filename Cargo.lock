@@ -79,6 +79,7 @@ dependencies = [
  "anyhow",
  "base64",
  "hex",
+ "lazy_static",
  "structopt",
  "tempfile",
 ]
