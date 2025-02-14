@@ -1,9 +1,4 @@
-use std::{
-    fs::File,
-    io,
-    path::PathBuf,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use crate::{
     algorithms::Algorithm,
@@ -11,7 +6,7 @@ use crate::{
     cli::algorithms::{Specification, ALGORITHMS},
 };
 
-use super::{encoding::Encoding, opts::Opts, parsers::parse_algorithm};
+use super::encoding::Encoding;
 
 pub enum Command {
     List,
@@ -23,69 +18,17 @@ pub enum Command {
     },
 }
 
-pub enum CommandParseError {
-    FileDoesNotExist,
-    PathIsDirectory,
-    InvalidPath(io::Error),
-    InvalidAlgorithm(String),
-    NotImplemented,
-}
-
-fn get_data(opts: &Opts, input: String) -> Result<ChunkedStream, CommandParseError> {
-    if opts.file {
-        let path = PathBuf::from(input);
-
-        let file = File::open(&path).map_err(|err| match err.kind() {
-            io::ErrorKind::NotFound => CommandParseError::FileDoesNotExist,
-            _ => CommandParseError::InvalidPath(err),
-        })?;
-
-        if path.is_dir() {
-            return Err(CommandParseError::PathIsDirectory);
-        }
-
-        return Ok(ChunkedStream::from(file));
-    } else {
-        return Ok(ChunkedStream::from(input));
-    }
-}
-
 fn get_formatted_time_taken(duration: Duration) -> String {
     let s = duration.as_secs();
     let ms = duration.as_millis();
     let us = duration.as_micros();
 
-    if s > 2000 {
+    if s > 2 {
         format!("{}.{}s", s, duration.subsec_millis())
     } else if ms > 2 {
         format!("{}.{}ms", ms, duration.subsec_micros())
     } else {
         format!("{}.{}us", us, duration.subsec_nanos())
-    }
-}
-
-impl TryFrom<Opts> for Command {
-    type Error = CommandParseError;
-
-    fn try_from(opts: Opts) -> Result<Self, Self::Error> {
-        if opts.list {
-            return Ok(Command::List);
-        }
-
-        if let (Some(input), Some(algorithm)) = (&opts.input, &opts.algorithm) {
-            let data = get_data(&opts, input.to_string())?;
-            let (_, algorithm) = parse_algorithm(algorithm)
-                .map_err(|err| CommandParseError::InvalidAlgorithm(err.to_string()))?;
-
-            return Ok(Command::Digest {
-                algorithm,
-                data,
-                encoding: opts.encoding,
-                verbose: opts.verbose,
-            });
-        }
-
-        return Err(CommandParseError::NotImplemented);
     }
 }
 

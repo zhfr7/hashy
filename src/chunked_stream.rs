@@ -1,9 +1,9 @@
 use std::fs::File;
-use std::io::{BufReader, Read, Result};
+use std::io::{BufRead, BufReader, Read, Result, Stdin};
 
 pub enum ChunkedStream {
     Bytes(Vec<u8>),
-    File(BufReader<File>),
+    File(Box<dyn BufRead>),
 }
 
 pub struct ChunkedIter {
@@ -20,7 +20,13 @@ impl From<String> for ChunkedStream {
 
 impl From<File> for ChunkedStream {
     fn from(file: File) -> Self {
-        ChunkedStream::File(BufReader::new(file))
+        ChunkedStream::File(Box::new(BufReader::new(file)))
+    }
+}
+
+impl From<Stdin> for ChunkedStream {
+    fn from(stdin: Stdin) -> Self {
+        ChunkedStream::File(Box::new(BufReader::new(stdin)))
     }
 }
 
@@ -95,7 +101,7 @@ mod test {
         write!(tmpfile, "Example message in file").unwrap();
         tmpfile.seek(SeekFrom::Start(0)).unwrap();
 
-        let data = ChunkedStream::File(BufReader::new(tmpfile));
+        let data = ChunkedStream::File(Box::new(BufReader::new(tmpfile)));
         let expected = vec![
             vec![69, 120, 97, 109, 112],
             vec![108, 101, 32, 109, 101],
