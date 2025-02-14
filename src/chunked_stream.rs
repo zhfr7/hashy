@@ -1,27 +1,30 @@
 use std::fs::File;
-use std::io::{Result, BufReader, Read};
+use std::io::{BufReader, Read, Result};
 
 pub enum ChunkedStream {
     Bytes(Vec<u8>),
-    File(BufReader<File>)
+    File(BufReader<File>),
 }
 
 pub struct ChunkedIter {
     data: ChunkedStream,
-    chunk_size: usize
+    chunk_size: usize,
+}
+
+impl From<String> for ChunkedStream {
+    fn from(value: String) -> Self {
+        let bytes = value.as_bytes().to_vec();
+        ChunkedStream::Bytes(bytes)
+    }
+}
+
+impl From<File> for ChunkedStream {
+    fn from(file: File) -> Self {
+        ChunkedStream::File(BufReader::new(file))
+    }
 }
 
 impl ChunkedStream {
-    pub fn from_string(input: &String) -> Self {
-        let bytes = input.as_bytes().to_vec();
-        ChunkedStream::Bytes(bytes)
-    }
-
-    pub fn from_file(filepath: &String) -> Result<Self> {
-        let file = File::open(filepath)?;
-        Ok(ChunkedStream::File(BufReader::new(file)))
-    }
-
     pub fn into_iter(self, chunk_size: usize) -> ChunkedIter {
         ChunkedIter {
             data: self,
@@ -35,8 +38,7 @@ impl Iterator for ChunkedIter {
 
     fn next(&mut self) -> Option<Self::Item> {
         match &mut self.data {
-            ChunkedStream::Bytes(bytes) => 
-            {
+            ChunkedStream::Bytes(bytes) => {
                 if bytes.is_empty() {
                     None
                 } else if bytes.len() < self.chunk_size {
@@ -44,22 +46,20 @@ impl Iterator for ChunkedIter {
                 } else {
                     Some(Ok(bytes.drain(..self.chunk_size).collect()))
                 }
-            },
+            }
 
-            ChunkedStream::File(reader) => 
-            {
+            ChunkedStream::File(reader) => {
                 let mut chunk = Vec::with_capacity(self.chunk_size);
 
                 match reader.take(self.chunk_size as u64).read_to_end(&mut chunk) {
                     Ok(0) => None,
                     Ok(_) => Some(Ok(chunk)),
-                    Err(err) => Some(Err(err))
+                    Err(err) => Some(Err(err)),
                 }
             }
         }
     }
 }
-
 
 #[cfg(test)]
 mod test {
@@ -74,21 +74,21 @@ mod test {
             vec![69, 120, 97, 109],
             vec![112, 108, 101, 32],
             vec![109, 101, 115, 115],
-            vec![97, 103, 101]
+            vec![97, 103, 101],
         ];
 
         let mut i = 0;
         for chunk in data.into_iter(4) {
             assert!(chunk.is_ok());
             assert_eq!(chunk.unwrap(), expected[i]);
-            
+
             i += 1;
         }
     }
 
     #[test]
     fn chunk_iterate_file() {
-        use std::io::{Write, Seek, SeekFrom};
+        use std::io::{Seek, SeekFrom, Write};
 
         // Write to temp file and seek to start
         let mut tmpfile = tempfile::tempfile().unwrap();
@@ -101,14 +101,14 @@ mod test {
             vec![108, 101, 32, 109, 101],
             vec![115, 115, 97, 103, 101],
             vec![32, 105, 110, 32, 102],
-            vec![105, 108, 101]
+            vec![105, 108, 101],
         ];
 
         let mut i = 0;
         for chunk in data.into_iter(5) {
             assert!(chunk.is_ok());
             assert_eq!(chunk.unwrap(), expected[i]);
-            
+
             i += 1;
         }
     }

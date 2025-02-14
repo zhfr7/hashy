@@ -1,13 +1,18 @@
 // Reference: https://en.wikipedia.org/wiki/MD5
 
+use super::{
+    helpers::{exact_32_bit_words, md_length_padding, Endianness},
+    Algorithm,
+};
 use crate::chunked_stream::ChunkedStream;
-use super::helpers::*;
 
 type MdBuffer = (u32, u32, u32, u32);
 
 const CHUNK_SIZE: usize = 64;
 const INIT_MD_BUFFER: MdBuffer = (0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476);
 const S_TABLE_REDUCED: [u8; 16] = [7, 12, 17, 22, 5, 9, 14, 20, 4, 11, 16, 23, 6, 10, 15, 21];
+
+#[rustfmt::skip]
 const K_TABLE: [u32; CHUNK_SIZE] = [
 0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
 0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
@@ -27,60 +32,64 @@ const K_TABLE: [u32; CHUNK_SIZE] = [
 0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
 ];
 
-/// Generates an MD5 digest from the given DataType
-/// and returns it as a DigestResult.
-pub fn digest(data: ChunkedStream) -> DigestResult {
-    // Initial MD buffer
-    let mut md_buf = INIT_MD_BUFFER;
+pub struct Md5;
 
-    // Process each chunk via last_chunk and increments length
-    let mut last_chunk = None;
-    let mut len: u64 = 0;
-    for chunk in data.into_iter(CHUNK_SIZE) {
-        process_chunk(last_chunk, &mut md_buf);
+impl Algorithm for Md5 {
+    fn digest(&self, data: ChunkedStream) -> super::DigestResult {
+        // Initial MD buffer
+        let mut md_buf = INIT_MD_BUFFER;
 
-        let chunk_bytes = chunk?;
-        len = len.wrapping_add((chunk_bytes.len() * 8) as u64);
-        last_chunk = Some(chunk_bytes);
+        // Process each chunk via last_chunk and increments length
+        let mut last_chunk: Option<Vec<u8>> = None;
+        let mut len: u64 = 0;
+        for chunk in data.into_iter(CHUNK_SIZE) {
+            if let Some(last_chunk) = last_chunk {
+                process_chunk(&last_chunk, &mut md_buf);
+            }
+
+            let chunk_bytes = chunk?;
+            len = len.wrapping_add((chunk_bytes.len() * 8) as u64);
+            last_chunk = Some(chunk_bytes);
+        }
+
+        // Process remaining chunk(s) after padding the last chunk
+        let last_chunk = last_chunk.unwrap_or_default();
+        for chunk in md_length_padding(&last_chunk, len, Endianness::Little) {
+            process_chunk(&chunk, &mut md_buf);
+        }
+
+        let (a, b, c, d) = md_buf;
+        Ok([
+            a.to_le_bytes(),
+            b.to_le_bytes(),
+            c.to_le_bytes(),
+            d.to_le_bytes(),
+        ]
+        .concat())
     }
-
-    // Process remaining chunk(s) after padding the last chunk
-    let last_chunk = last_chunk.unwrap_or_default();
-    for chunk in md_length_padding(&last_chunk, len, Endianness::Little) {
-        process_chunk(Some(chunk), &mut md_buf);
-    }
-
-    let (a, b, c, d) = md_buf;
-    Ok([a.to_le_bytes(), 
-        b.to_le_bytes(), 
-        c.to_le_bytes(), 
-        d.to_le_bytes()].concat())
 }
 
 /// Processes a chunk and mutates the MD buffer accordingly.
 /// Ignores if the chunk is None.
-fn process_chunk(chunk: Option<Vec<u8>>, (a0, b0, c0, d0): &mut MdBuffer) {
-    if chunk.is_none() { return }
-
-    let chunk = chunk.unwrap();
+fn process_chunk(chunk: &[u8], (a0, b0, c0, d0): &mut MdBuffer) {
     let words = exact_32_bit_words(&chunk, Endianness::Little);
 
     // Main loop
-    let (a_n, b_n, c_n, d_n) = 
-        (0..64).fold((*a0, *b0, *c0, *d0),
-        |(a, b, c, d), i: usize| {
-            let (f, g) = 
-            match i {
-                0..=15  => ((b & c) | (!b & d)  , i             ),
-                16..=31 => ((d & b) | (!d & c)  , (5*i + 1) % 16),
-                32..=47 => (b ^ c ^ d           , (3*i + 5) % 16),
-                _       => (c ^ (b | !d)        , (7*i) % 16    )
-            };
+    let (a_n, b_n, c_n, d_n) = (0..64).fold((*a0, *b0, *c0, *d0), |(a, b, c, d), i: usize| {
+        let (f, g) = match i {
+            0..=15 => ((b & c) | (!b & d), i),
+            16..=31 => ((d & b) | (!d & c), (5 * i + 1) % 16),
+            32..=47 => (b ^ c ^ d, (3 * i + 5) % 16),
+            _ => (c ^ (b | !d), (7 * i) % 16),
+        };
 
-            let f = f.wrapping_add(a).wrapping_add(K_TABLE[i]).wrapping_add(words[g]);
+        let f = f
+            .wrapping_add(a)
+            .wrapping_add(K_TABLE[i])
+            .wrapping_add(words[g]);
 
-            (d, b.wrapping_add(f.rotate_left(s(i))), b, c)
-        });
+        (d, b.wrapping_add(f.rotate_left(s(i))), b, c)
+    });
 
     *a0 = a0.wrapping_add(a_n);
     *b0 = b0.wrapping_add(b_n);
@@ -89,23 +98,28 @@ fn process_chunk(chunk: Option<Vec<u8>>, (a0, b0, c0, d0): &mut MdBuffer) {
 }
 
 /// Returns the value in the s-table at index i
-fn s(i: usize) -> u32 { S_TABLE_REDUCED[4*(i/16) + i%4] as u32 }
+fn s(i: usize) -> u32 {
+    S_TABLE_REDUCED[4 * (i / 16) + i % 4] as u32
+}
 
 #[cfg(test)]
 mod test {
+    use crate::algorithms::helpers::test::assert_digest;
+
     use super::*;
-    use crate::test_digest;
 
     #[test]
     fn md5_correct() {
-        test_digest!(digest,
+        for (input, expected) in [
             ("", 
                 "d41d8cd98f00b204e9800998ecf8427e"),
             ("The quick brown fox jumps over the lazy dog", 
                 "9e107d9d372bb6826bd81d3542a419d6"),
             ("This is a very long string with the purpose of exceeding the chunk length of 64 bytes",
-                "ba70257a277a031df015d5741af768f3")
-        );
+                "ba70257a277a031df015d5741af768f3"),
+        ] {
+            assert_digest(&Md5, input, expected);
+        }
     }
 
     #[test]
