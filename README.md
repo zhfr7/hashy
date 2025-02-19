@@ -1,7 +1,7 @@
 # hashy
 
-Hashy is a CLI application made entirely with Rust with a library of hashing algorithms like MD5, SHA-2 and SHAKE.\
-This is just a small project for me so don't expect all of it to be perfectly memory safe or performant.
+Hashy is a CLI application made entirely with Rust with a library of hashing algorithms like MD5, SHA-2 and SHAKE.
+It might serve useful for checksumming files or just comparing how different hashing algorithms behave.
 
 - [hashy](#hashy)
   - [Usage](#usage)
@@ -15,38 +15,52 @@ This is just a small project for me so don't expect all of it to be perfectly me
 
 * * *
 
+## Disclaimer
+
+These algorithm implementations only serve as an exercise for me and are _not recommended for production-critical
+use_ (like hashing user passwords)!
+
 ## Usage
 
 `hashy [FLAGS] [OPTIONS] <algorithm> <input>`
 
 ### Args
-- `algorithm` - algorithm name in kebab case (example: sha-512-224).
-- `input` - input message/filepath, for empty use `""`.
+- `algorithm`: Algorithm name in kebab case (example: sha-512-224).
+  Certain algorithms require extra parameters. See algorithm list for more info.
+- `input`: Filepath, treated as input text if `-t` flag is passed.
+  Only defaults to `stdin` if omitted and command is piped into.
 
 ### Flags
-- `-f (--file)` - input is treated as a filepath if specified.
-- `-l (--list)` - lists all the supported algorithms.
+- `-t (--text)`: Input is treated as text if specified.
+- `-l (--list)`: Lists all supported algorithms.
+- `-v (--verbose)`: Show verbose output, like time taken to digest.
 
 ### Options
-- `-e (--encoding)` - encoding type for output hash.
+- `-e (--encoding)`: Encoding type for output hash.
   - `hex` (default)
-  - `hex_upper` - uppercase hexadecimal
+  - `hex_upper`: Uppercase hexadecimal.
   - `base64`
-  - `bin` - binary
-- `-o (--output)` - output file to write program output to (default: stdout)
+  - `bin`: Literal binary representation (0s and 1s).
 
 ### Examples
 
-`hashy md5 "The quick brown fox jumps over the lazy dog"`
+Getting the MD5 checksum of a file `~/test.txt`:
 
-Certain algorithms like SHAKE require a length as a parameter.\
-This is done by appending the output length in bits to the end of the algorithm name separated by
-a dash. e.g:
+```console
+$ hashy md5 ~/test.txt
+```
 
-`hashy shake128-72 "The quick brown fox jumps over the lazy dog"`
+Getting the MD5 checksum of a message:
 
-would produce a SHAKE128 hash with length 72/8 = 9 bytes.\
-However, if a number not divisible by 8 is given, it would result in an error.
+```console
+$ hashy md5 -t "The quick brown fox jumps over the lazy dog"
+```
+
+Getting the SHAKE128 checksum of a message (without output length of 72 bits):
+
+```console
+$ hashy shake128-72 "The quick brown fox jumps over the lazy dog"
+```
 
 ## Binary
 
@@ -62,6 +76,7 @@ For the performance-optimized version, use `cargo build --release`, this would s
   - `md2`
   - `md4`
   - `md5`
+  - `md6-n`
 - `sha1`
 - `sha2` variants
   - `sha-224`
@@ -74,12 +89,13 @@ For the performance-optimized version, use `cargo build --release`, this would s
   - `sha3-256`
   - `sha3-384`
   - `sha3-512`
-  - `shake128-n` (arbitrary output length)
+  - `shake128-n`
   - `shake256-n`
+
+`n` denotes arbitrary output length (in bits, must be multiple of 8).
 
 ## Planned algorithms
 
-- MD6
 - BLAKE variants
 - RIPE variants
 - TIGER

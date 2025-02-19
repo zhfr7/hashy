@@ -11,6 +11,7 @@ use crate::algorithms::{
     md2::Md2,
     md4::Md4,
     md5::Md5,
+    md6::Md6,
     sha1::Sha1,
     sha2::{Sha2, Sha2Variant},
     sha3::{Sha3, Sha3Variant, Shake, ShakeVariant},
@@ -19,6 +20,14 @@ use crate::algorithms::{
 
 fn num(input: &str) -> IResult<&str, usize> {
     map_res(digit1, |v: &str| v.parse::<usize>()).parse(input)
+}
+
+fn md6(input: &str) -> IResult<&str, Box<dyn Algorithm>> {
+    map(
+        preceded(tag("md6-"), num),
+        |output_length| -> Box<dyn Algorithm> { Box::new(Md6::new(output_length, None)) },
+    )
+    .parse(input)
 }
 
 fn sha2(input: &str) -> IResult<&str, Box<dyn Algorithm>> {
@@ -80,6 +89,7 @@ pub fn parse_algorithm(input: &str) -> IResult<&str, Box<dyn Algorithm>> {
         map(tag("md2"), |_| -> Box<dyn Algorithm> { Box::new(Md2) }),
         map(tag("md4"), |_| -> Box<dyn Algorithm> { Box::new(Md4) }),
         map(tag("md5"), |_| -> Box<dyn Algorithm> { Box::new(Md5) }),
+        md6,
         map(tag("sha1"), |_| -> Box<dyn Algorithm> { Box::new(Sha1) }),
         map(tag("sha1"), |_| -> Box<dyn Algorithm> { Box::new(Sha1) }),
         sha2,

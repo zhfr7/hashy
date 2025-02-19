@@ -12,7 +12,7 @@ lazy_static! {
     pub static ref ALGORITHMS: Vec<Specification> = vec![
         Specification::Family {
             name: "MD",
-            members: vec!["md2", "md4", "md5"]
+            members: vec!["md2", "md4", "md5", "md6-n"]
         },
         Specification::Single("sha1"),
         Specification::Family {
